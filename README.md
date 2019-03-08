@@ -12,7 +12,7 @@ To be added...
 
 ## References
 
- [1]. Description of a New Variable-Length Key, 64-Bit Block Cipher (Blowfish), B. Schneier, 1994
- [2]. The Security of Ciphertext Stealing, Rogaway et al., 2012
- [3]. All-or-nothing transform, Rivest, 1997
- [4]. BLAKE2: simpler, smaller, fast as MD5, Aumasson et al., 2013
+  1. Description of a New Variable-Length Key, 64-Bit Block Cipher (Blowfish), B. Schneier, 1994
+  2. The Security of Ciphertext Stealing, Rogaway et al., 2012
+  3. All-or-nothing transform, Rivest, 1997
+  4. BLAKE2: simpler, smaller, fast as MD5, Aumasson et al., 2013
