@@ -6,4 +6,4 @@ Please see http://mles.io/app for more details about MlesTalk.
 
 ## Mles WebWorker Messaging API
 
-To be added...
+To be added, when finalized.
