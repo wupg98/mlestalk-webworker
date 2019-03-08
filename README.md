@@ -8,7 +8,7 @@ Please see http://mles.io for details about Mles protocol.
 
 ## Mles WebWorker Messaging API
 
-To be added...
+Please see source for now..
 
 ## References
 
