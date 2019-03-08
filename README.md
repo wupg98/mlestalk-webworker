@@ -4,7 +4,7 @@ Mles WebWorker is an open source Mles (Modern Lightweight channEl Service) WebSo
 
 All messaging is secured by Blowfish [1] (56-bit key) with ciphertext stealing (CTS) [2] + All-or-nothing-transform (AONT) [3] and Blake2 [4] HMAC.
 
-Please see http://mles.io/app for more details about MlesTalk.
+Please see http://mles.io/app for more details about MlesTalk and http://mles.io for details about Mles protocol.
 
 ## Mles WebWorker Messaging API
 
