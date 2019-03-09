@@ -8,7 +8,35 @@ Please see http://mles.io for details about Mles protocol.
 
 ## Mles WebWorker Messaging API
 
-Please see source for now..
+### Init message
+ \["init", data, addr, port, uid, channel, key, isEncryptedChannel\]
+
+### Init message receive
+ \["init", uid, channel, myuid, mychannel\]
+
+### Reconnect message
+ \["reconnect"\, data\]
+ 
+ ### Reconnect message receive
+ \["init", uid, channel, myuid, mychannel\]
+ 
+### Send message
+ \["send", data, uid, channel,  isEncryptedChannel, randarr, isImage, isMultipart, isFirst, isLast\]
+ 
+### Send message receive
+ \["send", uid, channel,  isMultipart\]
+ 
+### Data message receive
+ \["data", uid, channel, msgTimestamp, message, isImage, isMultipart, isFirst, isLast\]
+ 
+### Close message
+  \["close", data\]
+
+### Close message receive
+  \["close"\]
+
+
+
 
 ## References
 
