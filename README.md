@@ -8,7 +8,7 @@ Please see http://mles.io for details about Mles protocol.
 
 ## Mles WebWorker Messaging API
 
-### Init message array
+### Init message
 ```
 /**
  * Initialize Mles WebSocket connection
@@ -29,11 +29,11 @@ Please see http://mles.io for details about Mles protocol.
 /**
  * Mles WebSocket connection init receive after successful WebSocket initialization
  *
- * @param  init {String}              IN: command parameter of receive "init"
- * @param  uid {String}               IN: Original Mles User Id
- * @param  channel {String}           IN: Original Mles Channel
- * @param  myuid {String}             IN: Encrypted Mles User Id for reference
- * @param  mychannel {String}         IN: Encrypted Mles Channel for reference
+ * @param  init {String}              OUT: command parameter of receive "init"
+ * @param  uid {String}               OUT: Original Mles User Id
+ * @param  channel {String}           OUT: Original Mles Channel
+ * @param  myuid {String}             OUT: Encrypted Mles User Id for reference
+ * @param  mychannel {String}         OUT: Encrypted Mles Channel for reference
  */
  webWorker.onmessage = e.data["init", uid, channel, myuid, mychannel]
 ```
@@ -44,8 +44,10 @@ Please see http://mles.io for details about Mles protocol.
  *
  * @param  reconnect {String}         IN: command parameter "reconnect"
  * @param  data {String}              IN: data, null for "reconnect"
+ * @param  uid {String}               IN: Mles User Id //TODO MISSING
+ * @param  channel {String}           IN: Mles Channel //TODO MISSING
  */
- webWorker.postMessage[("reconnect", data)]
+ webWorker.postMessage[("reconnect", data, uid, channel)]
  ```
 ### Send message
 ```
@@ -57,7 +59,7 @@ Please see http://mles.io for details about Mles protocol.
  * @param  uid {String}               IN: Mles User Id
  * @param  channel {String}           IN: Mles Channel
  * @param  isEncryptedChannel {bool}  IN: true, if the channel is already in encrypted form
- * @param  randarr {Uint32Array}      IN: cryptocraphically random array of length 6
+ * @param  randArray {Uint32Array}    IN: random array filled with input of length 6 x Uint32
  * @param  isImage {bool}             IN: true, if an image
  * @param  isMultipart {bool}         IN: true, if multipart send
  * @param  isFirst {bool}             IN: true, if first of multipart send
@@ -66,19 +68,59 @@ Please see http://mles.io for details about Mles protocol.
  webWorker.postMessage[("send", data, uid, channel,  isEncryptedChannel, randarr, isImage, isMultipart, isFirst, isLast)]
  ```
 ### Send message receive
- \["send", uid, channel,  isMultipart\]
- 
+```
+/**
+ * Mles WebSocket send receive after send
+ *
+ * @param  send {String}              OUT: command parameter of receive "send"
+ * @param  uid {String}               OUT: Original Mles User Id
+ * @param  channel {String}           OUT: Original Mles Channel
+ * @param  isMultipart {boo           OUT: true, if send was multipart
+ */
+ webWorker.onmessage = e.data["send", uid, channel,  isMultipart]
+``` 
 ### Data message receive
- \["data", uid, channel, msgTimestamp, message, isImage, isMultipart, isFirst, isLast\]
- 
+```
+/**
+ * Mles WebSocket RX data receive
+ *
+ * @param  data {String}              OUT: command parameter of receive "data"
+ * @param  uid {String}               OUT: Original Mles User Id
+ * @param  channel {String}           OUT: Original Mles Channel
+ * @param  msgTimestamp {Date}        OUT: timestamp of the message in X format
+ * @param  message {String}           OUT: received message
+ * @param  isImage {bool}             OUT: true, if an image
+ * @param  isMultipart {bool}         OUT: true, if multipart
+ * @param  isFirst {bool}             OUT: true, if first of multipart
+ * @param  isLast {bool}              OUT: true, if last of multipart
+ */
+ webWorker.onmessage = e.data["data", uid, channel, msgTimestamp, message, isImage, isMultipart, isFirst, isLast]
+```
 ### Close message
-  \["close", data\]
-
+```
+/**
+ * Close message over Mles WebSocket connection
+ *
+ * @param  close {String}             IN: command parameter "close"
+ * @param  data {String}              IN: data, null for close
+ * @param  uid {String}               IN: Mles User Id //TODO MISSING
+ * @param  channel {String}           IN: Mles Channel //TODO MISSING
+ */
+ webWorker.postMessage[("close", data, uid, channel)]
+ ```
 ### Close message receive
-  \["close"\]
-
-
-
+```
+/**
+ * Mles WebSocket connection close receive after WebSocket closing
+ *
+ * @param  close {String}             OUT: command parameter of receive "close"
+ * @param  uid {String}               OUT: Original Mles User Id
+ * @param  channel {String}           OUT: Original Mles Channel
+ * @param  myuid {String}             OUT: Encrypted Mles User Id for reference
+ * @param  mychannel {String}         OUT: Encrypted Mles Channel for reference
+ */
+ webWorker.onmessage = e.data["close", uid, channel, myuid, mychannel]
+```
 
 ## References
 
