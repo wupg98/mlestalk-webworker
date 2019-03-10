@@ -253,7 +253,7 @@ function open_socket(myport, myaddr, uid, channel) {
 		webSocket.close();
 		var uid = bfEcb.trimZeros(bfEcb.decrypt(atob(myuid)));
 		var channel = bfEcb.trimZeros(bfEcb.decrypt(atob(mychannel)));	
-		postMessage(["close", null, uid, channel, myuid, mychannel]);
+		postMessage(["close", uid, channel, myuid, mychannel]);
 	};
 }
 
@@ -314,12 +314,14 @@ onmessage = function(e) {
 			var uid = e.data[2];
 			var channel = e.data[3];
 			var isEncryptedChannel = e.data[4];
+
+			uid = btoa(bfEcb.encrypt(uid));
 			if(!isEncryptedChannel) {
 				bfchannel = bfEcb.encrypt(channel);
 				channel = btoa(bfchannel);
 			}
 			// verify that we have already opened the channel earlier
-			if(myuid == uid && mychannel == channel) {
+			if(myuid === uid && mychannel === channel) {
 				open_socket(myport, myaddr, myuid, mychannel);
 			}
 			break;
