@@ -22,11 +22,21 @@ Please see http://mles.io for details about Mles protocol.
  * @param  key {String}               IN: Encryption key
  * @param  isEncryptedChannel {bool}  IN: is the channel already in encrypted form
  */
- worker.postMessage[("init", data, addr, port, uid, channel, key, isEncryptedChannel)]
+ webWorker.postMessage[("init", data, addr, port, uid, channel, key, isEncryptedChannel)]
 ```
 ### Init message receive
- \["init", uid, channel, myuid, mychannel\]
-
+```
+/**
+ * Mles WebSocket connection init receive after successful WebSocket initialization.
+ *
+ * @param  init {String}              IN: command parameter of receive
+ * @param  uid {String}               IN: Original Mles User Id
+ * @param  channel {String}           IN: Original Mles Channel
+ * @param  myuid {String}             IN: Encrypted Mles User Id
+ * @param  mychannel {String}         IN: Encrypted Mles Channel
+ */
+ webWorker.onmessage = e.data["init", uid, channel, myuid, mychannel]
+```
 ### Reconnect message
  \["reconnect"\, data\]
  
