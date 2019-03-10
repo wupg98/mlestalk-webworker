@@ -6,4 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-Initial 1.3.0 release. Open source webworker for Mles protocol.
+ * Updated API references for WebWorker
+   - Included missing (uid, channel) pair for reconnect and close for messaging API
+
+## [1.3.2]
+
+Initial 1.3.2 release. Open source webworker for Mles protocol.
