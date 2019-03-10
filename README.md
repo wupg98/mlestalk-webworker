@@ -84,15 +84,15 @@ Please see http://mles.io for details about Mles protocol.
 /**
  * Mles WebSocket RX data receive
  *
- * @param  data {String}              OUT: command parameter of receive "data"
- * @param  uid {String}               OUT: Original Mles User Id
- * @param  channel {String}           OUT: Original Mles Channel
- * @param  msgTimestamp {Date}        OUT: timestamp of the message in X format
- * @param  message {String}           OUT: received message
- * @param  isImage {bool}             OUT: true, if an image
- * @param  isMultipart {bool}         OUT: true, if multipart
- * @param  isFirst {bool}             OUT: true, if first of multipart
- * @param  isLast {bool}              OUT: true, if last of multipart
+ * @param  data {String}               OUT: command parameter of receive "data"
+ * @param  uid {String}                OUT: Original Mles User Id
+ * @param  channel {String}            OUT: Original Mles Channel
+ * @param  msgTimestamp {Date.valueOf} OUT: timestamp of the message in X format
+ * @param  message {String}            OUT: received message
+ * @param  isImage {bool}              OUT: true, if an image
+ * @param  isMultipart {bool}          OUT: true, if multipart
+ * @param  isFirst {bool}              OUT: true, if first of multipart
+ * @param  isLast {bool}               OUT: true, if last of multipart
  */
  webWorker.onmessage = e.data["data", uid, channel, msgTimestamp, message, isImage, isMultipart, isFirst, isLast]
 ```
