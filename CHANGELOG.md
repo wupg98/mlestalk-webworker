@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
  * Updated API references for WebWorker
    - Included missing (uid, channel) pair for reconnect and close for messaging API
+   - Clarify license copyright for Mles WebWorker development
 
 ## [1.3.2]
 
