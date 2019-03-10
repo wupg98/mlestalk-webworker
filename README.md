@@ -8,9 +8,22 @@ Please see http://mles.io for details about Mles protocol.
 
 ## Mles WebWorker Messaging API
 
-### Init message
- \["init", data, addr, port, uid, channel, key, isEncryptedChannel\]
-
+### Init message array
+```
+/**
+ * Initialize Mles WebSocket connection
+ *
+ * @param  init {String}              IN: command parameter
+ * @param  data {String}              IN: data, null for "init"
+ * @param  addr {String}              IN: TCP/IP address to connect to
+ * @param  port {String}              IN: TCP/IP port to connect to
+ * @param  uid {String}               IN: Mles User Id
+ * @param  channel {String}           IN: Mles Channel
+ * @param  key {String}               IN: Encryption key
+ * @param  isEncryptedChannel {bool}  IN: is the channel already in encrypted form
+ */
+ worker.postMessage[("init", data, addr, port, uid, channel, key, isEncryptedChannel)]
+```
 ### Init message receive
  \["init", uid, channel, myuid, mychannel\]
 
