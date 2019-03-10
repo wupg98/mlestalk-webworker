@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *
- * Copyright (c) 2019 MlesTalk developers for MlesTalk modifications
+ * Copyright (c) 2019 Mles WebWorker developers for CTS and AONT
  */
 
 /**
@@ -69,7 +69,7 @@
  * var encrypted = bf.base64Decode(encrypted);
  * var decrypted = bf.decrypt(encrypted);
  *
- * MlesTalk: Update to save AONT key
+ * Mles WebWorker: Update to save AONT key
  *
  * @param {string} key    пароль (может быть длинной до 56 байт)
  * @param {string} [mode] режим шифрования
@@ -151,7 +151,7 @@ Blowfish.prototype = {
 	/**
 	 * Шифрует строку
 	 *
-	 * MlesTalk: Modified to use Uint32Array as IV
+	 * Mles WebWorker: Modified to use Uint32Array as IV
 
 	 * @param {string} string шифруемая строка
 	 * @param {Uint32Array} iv произвольная 8байтная строка - вектор инициализации;
@@ -215,7 +215,7 @@ Blowfish.prototype = {
 	 * Шифрует в режиме ECB
 	 * (приватный метод)
 	 * 
-	 * MlesTalk: Updated to use AONT.
+	 * Mles WebWorker: Updated to use AONT.
 	 *
 	 * @param {string} string шифруемая строка
 	 * @return {string} зашифрованная строка
@@ -284,9 +284,9 @@ Blowfish.prototype = {
 	 * Шифрует в режиме CBC
 	 * (приватный метод)
 	 *
-	 * MlesTalk: Modified to use Uint32Array as IV.
-	 *           Updated to use ciphertext stealing.
-	 *           Updated to use AONT.
+	 * Mles WebWorker: Modified to use Uint32Array as IV.
+	 *                 Updated to use ciphertext stealing.
+	 *                 Updated to use AONT.
 	 *
 	 * @param {string} string шифруемая строка
 	 * @param {Uint32Array} iv 8-байтная строка - вектор инициализации
@@ -456,7 +456,7 @@ Blowfish.prototype = {
 	 * Расшифровать в режиме ECB
 	 * (приватный метод)
 	 *
-	 * MlesTalk: Updated to use AONT.
+	 * Mles WebWorker: Updated to use AONT.
 	 *
 	 * @param {string} string шифруемая строка
 	 * @throws {Error} кидает исключение если зашифрованная строка повреждена
@@ -519,8 +519,8 @@ Blowfish.prototype = {
 	 * Шифрует в режиме CBC
 	 * (приватный метод)
 	 *
-	 * MlesTalk: Updated to use ciphertext stealing.
-	 *           Updated to use AONT.
+	 * Mles WebWorker: Updated to use ciphertext stealing.
+	 *                 Updated to use AONT.
 	 *
 	 * @param {string} string зашифрованная строка
 	 * @param {Uint32Array} iv 8-байтная строка - вектор инициализации
@@ -842,7 +842,7 @@ Blowfish.prototype = {
 	 * в итоге посмотрел как сделано в PHP реализации Crypt_Blowfish (PEAR)
 	 * и разобрался.
 	 *
-	 * MlesTalk: Modified to use Uint8Array as key
+	 * Mles WebWorker: Modified to use Uint8Array as key
 	 *
 	 * @param {Uint8Array} key ключ
 	 */
