@@ -183,11 +183,6 @@ function open_socket(myport, myaddr, uid, channel) {
 		return;
 	}
 
-	WebSocket.pluginOptions = {
-		maxConnectTime: 5000,
-		override: false
-	};
-
 	webSocket = new WebSocket("ws://" + myaddr + ":" + myport
 		+ "?myname=" + uid
 		+ "&mychannel=" + channel, "mles-websocket");
@@ -199,7 +194,7 @@ function open_socket(myport, myaddr, uid, channel) {
 	};
 
 	webSocket.onmessage = function(event) {
-		if(event.data) {			
+		if(event.data) {
 			var msg = CBOR.decode(event.data);
 			var ivm = msg.message.slice(0,8);
 			var arr = msg.message.slice(8,msg.message.byteLength-8);
