@@ -169,15 +169,6 @@ function Uint8ToString(arr) {
 	return str;
 }
 
-onmessage = function(e) {
-	var msg = CBOR.decode(e.data);
-	var iv = msg.message.slice(0,8);
-	var arr = msg.message.slice(8,msg.message.byteLength-8);
-	var hmac = msg.message.slice(msg.message.byteLength-8, msg.message.byteLength)
-	var message = Uint8ToString(arr);
-	postMessage([msg.uid, msg.channel, iv, message, hmac]);
-}
-
 function open_socket(myport, myaddr, uid, channel) {
 	if (webSocket !== undefined && webSocket.readyState !== WebSocket.CLOSED) {
 		return;
