@@ -372,7 +372,12 @@ onmessage = function(e) {
 				message: newarr
 			};
 			var cbor = CBOR.encode(obj);
-			webSocket.send(cbor);
+			try {
+				webSocket.send(cbor);
+			} 
+			catch(err) {
+				break; 
+			}
 			postMessage(["send", uid, channel, isMultipart]);
 			break;
 		case "close":
