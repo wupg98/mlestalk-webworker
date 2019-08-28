@@ -186,7 +186,16 @@ function open_socket(myport, myaddr, uid, channel) {
 
 	webSocket.onmessage = function(event) {
 		if(event.data) {
-			var msg = CBOR.decode(event.data);
+			var msg;
+			try {
+				msg = CBOR.decode(event.data);
+			} catch(err) {
+				return;
+			}
+			//sanity
+			if(msg.message.byteLength <= 8 || msg.message.byteLength > 0xffffff)
+				return;
+
 			var ivm = msg.message.slice(0,8);
 			var arr = msg.message.slice(8,msg.message.byteLength-8);
 			var hmac = msg.message.slice(msg.message.byteLength-8, msg.message.byteLength)
@@ -208,6 +217,9 @@ function open_socket(myport, myaddr, uid, channel) {
 			var uid = bfEcb.trimZeros(bfEcb.decrypt(atob(msg.uid)));
 			var channel = bfEcb.trimZeros(bfEcb.decrypt(atob(msg.channel)));
 			var decrypted = bfCbc.decrypt(message, iv);
+
+			if(decrypted.length < 16)
+				return;
 
 			var timestring = decrypted.slice(0,8);
 			var rarray = bfCbc.split64by32(timestring);
@@ -278,6 +290,10 @@ onmessage = function(e) {
 			round.update(fullkey);
 			round.update(fullkey);			
 			round.update(fullkey);
+
+			//drop unused
+			fullkey = "";
+
 			var blakeaontcbc = new BLAKE2s(8); //aont key len
 			blakeaontcbc.update(round.digest());
 			var cbcaontkey = blakeaontcbc.digest();
@@ -316,6 +332,12 @@ onmessage = function(e) {
 			var channel = e.data[3];
 			var isEncryptedChannel = e.data[4];
 			var randarr = e.data[5];
+
+			//sanity
+			if(randarr.length != 6) {
+				break;
+			}
+
 			var isImage = e.data[6];
 			var isMultipart = e.data[7];
 			var isFirst = e.data[8];
@@ -371,11 +393,15 @@ onmessage = function(e) {
 				channel: btoa(bfEcb.encrypt(channel)),
 				message: newarr
 			};
-			var cbor = CBOR.encode(obj);
+			var cbor;
+			try {
+				cbor = CBOR.encode(obj);
+			} catch(err) {
+				break;
+			}
 			try {
 				webSocket.send(cbor);
-			} 
-			catch(err) {
+			} catch(err) {
 				break; 
 			}
 			postMessage(["send", uid, channel, isMultipart]);
