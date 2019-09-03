@@ -6,6 +6,39 @@ All messaging is secured by Blowfish [1] (56-bit key) including ciphertext steal
 
 Please see http://mles.io for details about Mles protocol.
 
+## Protocol analysis
+Verifpal 0.3 analysis shows no issues at the moment in the Mles WebWorker protocol logic:
+```
+Verifpal 0.3 (https://verifpal.com)
+c 2019 Symbolic Software
+WARNING: Verifpal is experimental software.
+
+ Verifpal! parsing model...
+ Verifpal! verification initiated at 21:56:05
+ Analysis! Alice has sent cipher_msg_alice_name to Bob, rendering it public
+ Analysis! Alice has sent cipher_msg_alice_channel to Bob, rendering it public
+ Analysis! Alice has sent cipher_msg_alice to Bob, rendering it public
+ Analysis! Alice has sent hmac_cipher_msg_alice to Bob, rendering it public
+ Analysis! Bob has sent cipher_msg_bob_name to Alice, rendering it public
+ Analysis! Bob has sent cipher_msg_bob_channel to Alice, rendering it public
+ Analysis! Bob has sent cipher_msg_bob to Alice, rendering it public
+ Analysis! Bob has sent hmac_cipher_msg_bob to Alice, rendering it public
+     Info! attacker is configured as active attacker
+Deduction! cipher_msg_alice_name resolves to ENC(ecb_key_alice, name_alice)
+Deduction! ENC(ecb_key_bob, channel) found by attacker by equivocating with cipher_msg_alice_channel (depth 1)
+Deduction! ENC(ecb_key_alice, channel) found by attacker by equivocating with cipher_msg_alice_channel (depth 1)
+Deduction! cipher_msg_alice resolves to ENC(cbc_key_alice, msg_alice) (depth 2)
+Deduction! hmac_cipher_msg_alice resolves to HMAC(ecb_key_alice, cipher_msg_alice) (depth 3)
+Deduction! HMAC(ecb_key_bob, cipher_msg_alice) found by attacker by equivocating with hmac_cipher_msg_alice (depth 4)
+Deduction! cipher_msg_bob_name resolves to ENC(ecb_key_bob, name_bob) (depth 5)
+Deduction! cipher_msg_bob resolves to ENC(cbc_key_bob, msg_bob) (depth 6)
+Deduction! hmac_cipher_msg_bob resolves to HMAC(ecb_key_bob, cipher_msg_bob) (depth 7)
+Deduction! HMAC(ecb_key_alice, cipher_msg_bob) found by attacker by equivocating with hmac_cipher_msg_bob (depth 8)
+     Info! phase 1a active attacker complete
+ Verifpal! verification completed at 21:56:05
+REMINDER: Verifpal is experimental software and may miss attacks.
+```
+
 ## MlesTalk WebWorker Messaging API
 
 ### Init message
