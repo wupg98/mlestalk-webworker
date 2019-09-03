@@ -1,4 +1,4 @@
-attacker[passive]
+attacker[active]
 
 principal Bob[
 	knows private name_bob
