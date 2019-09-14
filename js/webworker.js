@@ -170,7 +170,7 @@ function Uint8ToString(arr) {
 }
 
 function open_socket(myport, myaddr, uid, channel) {
-	if (webSocket !== undefined && webSocket.readyState !== WebSocket.CLOSED) {
+	if (webSocket !== undefined && webSocket.readyState == WebSocket.OPEN) {
 		return;
 	}
 
