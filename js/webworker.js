@@ -14,14 +14,15 @@ var myport;
 var myuid;
 var mychannel;
 var ecbkey;
-const SCATTERSIZE = 14;
+const SCATTERSIZE = 15;
+const ISFULL  = 0x8000
 const ISIMAGE = 0x4000;
 const ISMULTI = 0x4000;
 const ISFIRST = 0x2000;
 const ISLAST  = 0x1000;
 const BEGIN = new Date(Date.UTC(2018, 0, 1, 0, 0, 0));
 
-function scatterTime(rvalU32, valU32, timeU14)
+function scatterTime(rvalU32, valU32, timeU15)
 {
 	//check first which bits to use
 	var numofones = 0;
@@ -41,7 +42,7 @@ function scatterTime(rvalU32, valU32, timeU14)
 		if((isOnes && bit[0] > 0) || (false == isOnes && 0 == bit[0])) {
 			var tbit = new Uint32Array(1);
 			//apply setting to next item
-			tbit[0] = (timeU14 & (1 << timeslot)) >> timeslot;
+			tbit[0] = (timeU15 & (1 << timeslot)) >> timeslot;
 			if(tbit[0] > 0) {
 				valU32 |= (1 << i);
 			}
@@ -60,7 +61,7 @@ function unscatterTime(rvalU32, svalU32)
 {
 	//check first which bits to use
 	var numofones = 0;
-	var timeU14 = new Uint32Array(1);
+	var timeU15 = new Uint32Array(1);
 	var isOnes = true;
 	for (var i = 31; i >= 0; i--) {
 		var bit = new Uint32Array(1);
@@ -79,13 +80,13 @@ function unscatterTime(rvalU32, svalU32)
 			var sbit = new Uint32Array(1);
 			sbit[0] = (svalU32 & (1 << i)) >> i;
 			if(sbit[0] > 0)
-				timeU14[0] |= (1 << timeslot);
+				timeU15[0] |= (1 << timeslot);
 			timeslot--;
 			if(timeslot < 0)
 				break;
 		}
 	}
-	return timeU14[0];
+	return timeU15[0];
 }
 
 function createTimestamp(weekstamp) {
@@ -223,27 +224,31 @@ function open_socket(myport, myaddr, uid, channel) {
 
 			var timestring = decrypted.slice(0,8);
 			var rarray = bfCbc.split64by32(timestring);
-			var timeU14 = unscatterTime(rarray[0], rarray[1]);
+			var timeU15 = unscatterTime(rarray[0], rarray[1]);
 			var weekstring = decrypted.slice(8,16);
 			var warray = bfCbc.split64by32(weekstring);
-			var weekU14 = unscatterTime(warray[0], warray[1]);
-			var msgDate = readTimestamp(timeU14 & ~ISIMAGE, weekU14 & ~(ISMULTI|ISFIRST|ISLAST));
+			var weekU15 = unscatterTime(warray[0], warray[1]);
+			var msgDate = readTimestamp(timeU15 & ~(ISFULL|ISIMAGE), weekU15 & ~(ISMULTI|ISFIRST|ISLAST));
 			var message = decrypted.slice(16, decrypted.byteLength);
 
+			var isFull = false;
 			var isImage = false;
 			var isMultipart = false;
 			var isFirst = false;
 			var isLast = false;
-			if(timeU14 & ISIMAGE)
+			if(timeU15 & ISFULL) {
+				isFull = true;
+			}
+			if(timeU15 & ISIMAGE)
 				isImage = true;
-			if(weekU14 & ISMULTI)
+			if(weekU15 & ISMULTI)
 				isMultipart = true;
-			if(weekU14 & ISFIRST)
+			if(weekU15 & ISFIRST)
 				isFirst = true;
-			if(weekU14 & ISLAST)
+			if(weekU15 & ISLAST)
 				isLast = true;
 
-			postMessage(["data", uid, channel, msgDate.valueOf(), message, isImage, isMultipart, isFirst, isLast]);
+			postMessage(["data", uid, channel, msgDate.valueOf(), message, isFull, isImage, isMultipart, isFirst, isLast]);
 		}
 	};
 
@@ -338,10 +343,11 @@ onmessage = function(e) {
 				break;
 			}
 
-			var isImage = e.data[6];
-			var isMultipart = e.data[7];
-			var isFirst = e.data[8];
-			var isLast = e.data[9];
+			var isFull = e.data[6];
+			var isImage = e.data[7];
+			var isMultipart = e.data[8];
+			var isFirst = e.data[9];
+			var isLast = e.data[10];
 			var iv = randarr.slice(0,2);
 			var rarray = randarr.slice(2);
 
@@ -351,6 +357,9 @@ onmessage = function(e) {
 
 			var weekstamp = createWeekstamp();
 			var timestamp = createTimestamp(weekstamp);
+			if(isFull) {
+				timestamp |= ISFULL;
+			}
 			if(isImage) {
 				timestamp |= ISIMAGE;
 			}
