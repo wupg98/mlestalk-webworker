@@ -93,12 +93,13 @@ REMINDER: Verifpal is experimental software and may miss attacks.
  * @param  channel {String}           IN: Mles Channel
  * @param  isEncryptedChannel {bool}  IN: true, if the channel is already in encrypted form
  * @param  randArray {Uint32Array}    IN: random array filled with input of length 6 x Uint32
+ * @param  isFull {bool}              IN: true, if a full message
  * @param  isImage {bool}             IN: true, if an image
  * @param  isMultipart {bool}         IN: true, if multipart send
  * @param  isFirst {bool}             IN: true, if first of multipart send
  * @param  isLast {bool}              IN: true, if last of multipart send
  */
- webWorker.postMessage[("send", data, uid, channel,  isEncryptedChannel, randarr, isImage, isMultipart, isFirst, isLast)]
+ webWorker.postMessage[("send", data, uid, channel,  isEncryptedChannel, randarr, isFull, isImage, isMultipart, isFirst, isLast)]
  ```
 ### Send message receive
 ```
@@ -122,12 +123,13 @@ REMINDER: Verifpal is experimental software and may miss attacks.
  * @param  channel {String}            OUT: Original Mles Channel
  * @param  msgTimestamp {Date.valueOf} OUT: timestamp of the message in X format
  * @param  message {String}            OUT: received message
+ * @param  isFull {bool}               OUT: true, if a full message
  * @param  isImage {bool}              OUT: true, if an image
  * @param  isMultipart {bool}          OUT: true, if multipart
  * @param  isFirst {bool}              OUT: true, if first of multipart
  * @param  isLast {bool}               OUT: true, if last of multipart
  */
- webWorker.onmessage = e.data["data", uid, channel, msgTimestamp, message, isImage, isMultipart, isFirst, isLast]
+ webWorker.onmessage = e.data["data", uid, channel, msgTimestamp, message, isFull, isImage, isMultipart, isFirst, isLast]
 ```
 ### Close message
 ```
