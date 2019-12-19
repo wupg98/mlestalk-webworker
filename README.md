@@ -2,7 +2,7 @@
 
 MlesTalk WebWorker is an open source Mles (Modern Lightweight channEl Service) WebSocket client layer protocol implementation written in JavaScript. MlesTalk WebWorker can be used independently by any application over its messaging application interface. It used as part of [MlesTalk](http://mles.io/app) Android application.
 
-All messaging is secured by Blowfish [1] (56-bit key) including ciphertext stealing (CTS) [2], All-or-nothing-transform (AONT) [3] and Blake2 [4] HMAC.
+All messaging is secured by Blowfish [1] (56-bit key, low level of security) including ciphertext stealing (CTS) [2], All-or-nothing-transform (AONT) [3] and Blake2 [4] HMAC.
 
 Please see http://mles.io for details about Mles protocol.
 
