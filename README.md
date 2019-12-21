@@ -2,62 +2,11 @@
 
 MlesTalk WebWorker is an open source Mles (Modern Lightweight channEl Service) WebSocket client layer protocol implementation written in JavaScript. MlesTalk WebWorker can be used independently by any application over its messaging application interface. It is used as part of [MlesTalk](http://mles.io/app) Android application.
 
-Messaging is obfuscated with various ways but cannot be considered encrypted in any way at the moment due to small key size. See references for details.
+Messages over MlesTalk WebWorker are not secured in any safe way. You should not count on MlesTalk if you want to have secure communications.
+
+However, messages are not plain text either as they are obfuscated using symmetrical Blowfish (56-bit key) [1] with CTS [2] + AONT [3] and Blake2 [4] HMAC.
 
 Please see http://mles.io for details about Mles protocol.
-
-## Protocol analysis
-Verifpal 0.7.5 analysis shows no issues at the moment in the Mles WebWorker protocol logic:
-```
-Verifpal 0.7.5 (go1.13.3)
-© 2019 Nadim Kobeissi — https://verifpal.com
-WARNING: Verifpal is experimental software.
-
- Verifpal! parsing model "mles-websocket.vp"...
- Verifpal! verification initiated at 15:57:25
- Analysis! Alice has sent cipher_msg_alice_name to Bob, rendering it public
- Analysis! Alice has sent hmac_cipher_msg_alice_name to Bob, rendering it public
- Analysis! Alice has sent cipher_msg_alice_channel to Bob, rendering it public
- Analysis! Alice has sent hmac_cipher_msg_alice_channel to Bob, rendering it public
- Analysis! Alice has sent cipher_msg_alice to Bob, rendering it public
- Analysis! Alice has sent hmac_cipher_msg_alice to Bob, rendering it public
- Analysis! Bob has sent cipher_msg_bob_name to Alice, rendering it public
- Analysis! Bob has sent hmac_cipher_msg_bob_name to Alice, rendering it public
- Analysis! Bob has sent cipher_msg_bob_channel to Alice, rendering it public
- Analysis! Bob has sent hmac_cipher_msg_bob_channel to Alice, rendering it public
- Analysis! Bob has sent cipher_msg_bob to Alice, rendering it public
- Analysis! Bob has sent hmac_cipher_msg_bob to Alice, rendering it public
-     Info! attacker is configured as active
-Deduction! cipher_msg_alice_name resolves to ENC(HASH(HASH(key_string)), name_alice)
-Deduction! hmac_cipher_msg_alice_name resolves to MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), name_alice)) (analysis 0, depth 1)
-Deduction! ENC(HASH(HASH(key_string)), channel) found by attacker by equivocating with cipher_msg_alice_channel (analysis 0, depth 2)
-Deduction! MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), channel)) found by attacker by equivocating with hmac_cipher_msg_alice_channel (analysis 0, depth 3)
-Deduction! cipher_msg_alice resolves to ENC(HASH(key_string), msg_alice) (analysis 0, depth 4)
-Deduction! hmac_cipher_msg_alice resolves to MAC(HASH(HASH(key_string)), ENC(HASH(key_string), msg_alice)) (analysis 0, depth 5)
-Deduction! cipher_msg_bob_name resolves to ENC(HASH(HASH(key_string)), name_bob) (analysis 0, depth 6)
-Deduction! hmac_cipher_msg_bob_name resolves to MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), name_bob)) (analysis 0, depth 7)
-Deduction! cipher_msg_bob resolves to ENC(HASH(key_string), msg_bob) (analysis 0, depth 8)
-Deduction! hmac_cipher_msg_bob resolves to MAC(HASH(HASH(key_string)), ENC(HASH(key_string), msg_bob)) (analysis 0, depth 9)
- Analysis! ASSERT(MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), name_alice)), MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), name_alice)))? now conceivable by reconstructing with MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), name_alice)), MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), name_alice)) (analysis 0, depth 10)
- Analysis! ASSERT(MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), channel)), MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), channel)))? now conceivable by reconstructing with MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), channel)), MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), channel)) (analysis 0, depth 11)
- Analysis! ASSERT(MAC(HASH(HASH(key_string)), ENC(HASH(key_string), msg_alice)), MAC(HASH(HASH(key_string)), ENC(HASH(key_string), msg_alice)))? now conceivable by reconstructing with MAC(HASH(HASH(key_string)), ENC(HASH(key_string), msg_alice)), MAC(HASH(HASH(key_string)), ENC(HASH(key_string), msg_alice)) (analysis 0, depth 12)
- Analysis! ASSERT(MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), name_bob)), MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), name_bob)))? now conceivable by reconstructing with MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), name_bob)), MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), name_bob)) (analysis 0, depth 13)
- Analysis! ASSERT(MAC(HASH(HASH(key_string)), ENC(HASH(key_string), msg_bob)), MAC(HASH(HASH(key_string)), ENC(HASH(key_string), msg_bob)))? now conceivable by reconstructing with MAC(HASH(HASH(key_string)), ENC(HASH(key_string), msg_bob)), MAC(HASH(HASH(key_string)), ENC(HASH(key_string), msg_bob)) (analysis 0, depth 14)
- Analysis! MAC(nil, nil) now conceivable by reconstructing with nil, nil (analysis 9, depth 0)
- Analysis! ASSERT(MAC(HASH(HASH(key_string)), ENC(HASH(key_string), msg_alice)), MAC(nil, nil))? now conceivable by reconstructing with MAC(HASH(HASH(key_string)), ENC(HASH(key_string), msg_alice)), MAC(nil, nil) (analysis 9, depth 1)
-Deduction! ENC(nil, nil) found by attacker by reconstructing with nil (analysis 12, depth 0)
- Analysis! ASSERT(MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), channel)), MAC(nil, nil))? now conceivable by reconstructing with MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), channel)), MAC(nil, nil) (analysis 17, depth 0)
- Analysis! ASSERT(MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), name_alice)), MAC(nil, nil))? now conceivable by reconstructing with MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), name_alice)), MAC(nil, nil) (analysis 34, depth 0)
- Analysis! MAC(nil, nil) now conceivable by reconstructing with nil, nil (analysis 102, depth 0)
- Analysis! ASSERT(MAC(HASH(HASH(key_string)), ENC(HASH(key_string), msg_bob)), MAC(nil, nil))? now conceivable by reconstructing with MAC(HASH(HASH(key_string)), ENC(HASH(key_string), msg_bob)), MAC(nil, nil) (analysis 102, depth 1)
-Deduction! ENC(nil, nil) found by attacker by reconstructing with nil (analysis 105, depth 0)
- Analysis! ASSERT(MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), channel)), MAC(nil, nil))? now conceivable by reconstructing with MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), channel)), MAC(nil, nil) (analysis 110, depth 0)
- Analysis! ASSERT(MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), name_bob)), MAC(nil, nil))? now conceivable by reconstructing with MAC(HASH(HASH(key_string)), ENC(HASH(HASH(key_string)), name_bob)), MAC(nil, nil) (analysis 127, depth 0)
- Stage 2, Analysis 192...
- Verifpal! verification completed at 15:57:31
- Verifpal! thank you for using verifpal!
-     Info! verifpal is experimental software and may miss attacks.
-```
 
 ## MlesTalk WebWorker Messaging API
 
