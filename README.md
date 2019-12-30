@@ -4,7 +4,7 @@ MlesTalk WebWorker is an open source Mles (Modern Lightweight channEl Service) W
 
 Messages over MlesTalk WebWorker are not secured in any safe way. You should not count on MlesTalk WebWorker if you want to have secure communications.
 
-However, messages are not plain text either as they are obfuscated using symmetrical Blowfish (56-bit key) [1] with CTS [2] + AONT [3] and Blake2 [4] HMAC.
+However, messages are not plain text either as they are obfuscated end-to-end using symmetrical Blowfish (56-bit key) [1] with CTS [2] + AONT [3] and Blake2 [4] HMAC.
 
 Please see http://mles.io for details about Mles protocol.
 
