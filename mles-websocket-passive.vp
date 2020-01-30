@@ -1,5 +1,5 @@
 //Verifpal 0.7.5 model
-attacker[active]
+attacker[passive]
 
 principal Bob[
 	knows private name_bob
