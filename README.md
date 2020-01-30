@@ -1,12 +1,14 @@
 # MlesTalk WebWorker
 
-MlesTalk WebWorker is an open source Mles (Modern Lightweight channEl Service) WebSocket client layer protocol implementation written in JavaScript. MlesTalk WebWorker can be used independently by any application over its messaging application interface. It is used as part of [MlesTalk](http://mles.io/app) Android application.
+MlesTalk WebWorker is an open source Mles (Modern Lightweight channEl Service) WebSocket client layer protocol implementation written in JavaScript. MlesTalk WebWorker can be used independently by any application over its messaging application interface. It is used as part of [MlesTalk](https://mles.io/app.html) Android application.
 
-Messages over MlesTalk WebWorker are not secured in any safe way. You should not count on MlesTalk WebWorker if you want to have secure communications.
+Messages over MlesTalk WebWorker are sent on TLS [1] protected connection by default which should be secure.
 
-However, messages are not plain text either as they are obfuscated end-to-end using symmetrical Blowfish (56-bit key) [1] with CTS [2] + AONT [3] and Blake2 [4] HMAC.
+In addition to TLS, the message data itself is not secured in any safe way. You should not count on MlesTalk WebWorker if you want to have completely secure communications.
 
-Please see http://mles.io for details about Mles protocol.
+However, messages are not plain text either as they are obfuscated end-to-end using symmetrical Blowfish (56-bit key) [2] with CTS [3] + AONT [4] and Blake2 [5] HMAC.
+
+Please see https://mles.io for details about Mles protocol.
 
 ## MlesTalk WebWorker Messaging API
 
@@ -128,7 +130,8 @@ Please see http://mles.io for details about Mles protocol.
 
 ## References
 
-  1. B. Schneier, 1994. Description of a New Variable-Length Key, 64-Bit Block Cipher (Blowfish).
-  2. Rogaway, Wooding & Zhang, 2012. The Security of Ciphertext Stealing.
-  3. Rivest, 1997. All-or-nothing transform.
-  4. Aumasson, Neves, Wilcox-O’Hearn & Winnerlein, 2013. BLAKE2: simpler, smaller, fast as MD5.
+  1. The Transport Layer Security (TLS) Protocol Version 1.3, IETF RFC8446
+  2. B. Schneier, 1994. Description of a New Variable-Length Key, 64-Bit Block Cipher (Blowfish).
+  3. Rogaway, Wooding & Zhang, 2012. The Security of Ciphertext Stealing.
+  4. Rivest, 1997. All-or-nothing transform.
+  5. Aumasson, Neves, Wilcox-O’Hearn & Winnerlein, 2013. BLAKE2: simpler, smaller, fast as MD5.
