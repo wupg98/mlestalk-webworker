@@ -4,7 +4,7 @@ MlesTalk WebWorker is an open source Mles (Modern Lightweight channEl Service) W
 
 Messages using MlesTalk WebWorker are sent on Transport Layer Security (TLS) [1] protected connection by default which should be secure.
 
-Message data sent is obfuscated end-to-end using symmetrical Blowfish (56-bit key, weak encryption) [2] with CTS [3] + AONT [4] and Blake2 [5] HMAC.
+Message data sent is obfuscated end-to-end using symmetrical Blowfish (56-bit key, weak encryption) [2] with CTS [3] + AONT [4] and Blake2 [5] HMAC. Using weak encryption with data avoids the [need for registration](https://www.eff.org/deeplinks/2019/08/us-export-controls-and-published-encryption-source-code-explained) of the WebWorker users.
 
 Please see https://mles.io for details about Mles protocol.
 
