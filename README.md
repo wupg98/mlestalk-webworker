@@ -4,7 +4,7 @@ MlesTalk WebWorker is an open source Mles (Modern Lightweight channEl Service) W
 
 Messages using MlesTalk WebWorker are sent on Transport Layer Security (TLS) [1] protected connection by default which should be secure.
 
-Message data sent is obfuscated end-to-end using symmetrical Blowfish (56-bit key, weak key) [2] with CTS [3] + AONT [4] and Blake2 [5] HMAC. Using weak key avoids the [need for registration](https://www.eff.org/deeplinks/2019/08/us-export-controls-and-published-encryption-source-code-explained) when this library is part of an application in a global app store.
+Message data sent is obfuscated end-to-end using symmetrical Blowfish (56-bit key, weak key) [2] with CTS [3] + AONT [4] and Blake2 [5] HMAC. Using weak key avoids the [need for registration](https://www.eff.org/deeplinks/2019/08/us-export-controls-and-published-encryption-source-code-explained) when this library is part of an application in a global app store. While not plain text, please do note that this obfuscation does not protect from serious message opening efforts.
 
 If the Mles Websocket session is connected to [arki-server](https://github.com/jq-rs/arki-server) proxy, it will forward the traffic to Mles server transforming it to AES and vice versa, which also should be secure.
 
