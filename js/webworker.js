@@ -120,24 +120,32 @@ function isEqualHmacs(hmac, rhmac) {
 	return true;
 }
 
-function iv2u8arr(iv) {
-	var ivu8 = new Uint8Array(8);
-	ivu8[0] = iv[0] >> 24;
-	ivu8[1] = iv[0] >> 16 & 0xff;
-	ivu8[2] = iv[0] >> 8 & 0xff;
-	ivu8[3] = iv[0] & 0xff;
-	ivu8[4] = iv[1] >> 24;
-	ivu8[5] = iv[1] >> 16 & 0xff;
-	ivu8[6] = iv[1] >> 8 & 0xff;
-	ivu8[7] = iv[1] & 0xff;
-	return ivu8;
+function nonce2u8arr(nonce) {
+	var nonceu8 = new Uint8Array(16);
+	nonceu8[0] = nonce[0] >> 24;
+	nonceu8[1] = nonce[0] >> 16 & 0xff;
+	nonceu8[2] = nonce[0] >> 8 & 0xff;
+	nonceu8[3] = nonce[0] & 0xff;
+	nonceu8[4] = nonce[1] >> 24;
+	nonceu8[5] = nonce[1] >> 16 & 0xff;
+	nonceu8[6] = nonce[1] >> 8 & 0xff;
+	nonceu8[7] = nonce[1] & 0xff;
+	nonceu8[8] = nonce[2] >> 24;
+	nonceu8[9] = nonce[2] >> 16 & 0xff;
+	nonceu8[10] = nonce[2] >> 8 & 0xff;
+	nonceu8[11] = nonce[2] & 0xff;
+	nonceu8[12] = nonce[3] >> 24;
+	nonceu8[13] = nonce[3] >> 16 & 0xff;
+	nonceu8[14] = nonce[3] >> 8 & 0xff;
+	nonceu8[15] = nonce[3] & 0xff;
+	return nonceu8;
 }
 
-function u8arr2iv(ivm) {
-	var iv = new Uint32Array(2);
-	iv[0] = ivm[0] << 24 | ivm[1] << 16 | ivm[2] << 8 | ivm[3];
-	iv[1] = ivm[4] << 24 | ivm[5] << 16 | ivm[6] << 8 | ivm[7];
-	return iv;
+function u8arr2nonce(noncem) {
+	var nonce = new Uint32Array(4);
+	nonce[0] = noncem[0] << 24 | noncem[1] << 16 | noncem[2] << 8 | noncem[3];
+	nonce[1] = noncem[4] << 24 | noncem[5] << 16 | noncem[6] << 8 | noncem[7];
+	return nonce;
 }
 
 function load32(a, i) {
@@ -194,18 +202,19 @@ function open_socket(myport, myaddr, uid, channel) {
 				return;
 			}
 			//sanity
-			if(msg.message.byteLength <= 8 || msg.message.byteLength > 0xffffff)
+			if(msg.message.byteLength <= 16 || msg.message.byteLength > 0xffffff) {
 				return;
+			}
 
-			var ivm = msg.message.slice(0,8);
-			var arr = msg.message.slice(8,msg.message.byteLength-8);
+			var noncem = msg.message.slice(0,16);
+			var arr = msg.message.slice(16,msg.message.byteLength-8);
 			var hmac = msg.message.slice(msg.message.byteLength-8, msg.message.byteLength)
 			var message = Uint8ToString(arr);
 
 			//verify first hmac
-			var hmacarr = new Uint8Array(ivm.byteLength + arr.byteLength);
-			hmacarr.set(ivm, 0);
-			hmacarr.set(arr, ivm.byteLength);
+			var hmacarr = new Uint8Array(noncem.byteLength + arr.byteLength);
+			hmacarr.set(noncem, 0);
+			hmacarr.set(arr, noncem.byteLength);
 			var blakehmac = new BLAKE2s(8, ecbkey);
 			blakehmac.update(hmacarr);
 			var rhmac = blakehmac.digest();
@@ -213,14 +222,16 @@ function open_socket(myport, myaddr, uid, channel) {
 				return;
 			}
 
-			var iv = u8arr2iv(ivm);
+			var nonce = u8arr2nonce(noncem);
+			var iv = nonce.slice(0,2);
 
 			var uid = bfEcb.trimZeros(bfEcb.decrypt(atob(msg.uid)));
 			var channel = bfEcb.trimZeros(bfEcb.decrypt(atob(msg.channel)));
 			var decrypted = bfCbc.decrypt(message, iv);
 
-			if(decrypted.length < 16)
+			if(decrypted.length < 16) {
 				return;
+			}
 
 			var timestring = decrypted.slice(0,8);
 			var rarray = bfCbc.split64by32(timestring);
@@ -339,7 +350,7 @@ onmessage = function(e) {
 			var randarr = e.data[5];
 
 			//sanity
-			if(randarr.length != 6) {
+			if(randarr.length != 8) {
 				break;
 			}
 
@@ -349,7 +360,8 @@ onmessage = function(e) {
 			var isFirst = e.data[9];
 			var isLast = e.data[10];
 			var iv = randarr.slice(0,2);
-			var rarray = randarr.slice(2);
+			var nonce = randarr.slice(0,4);
+			var rarray = randarr.slice(4);
 
 			if(isEncryptedChannel) {
 				channel = bfEcb.trimZeros(bfEcb.decrypt(atob(channel)));
@@ -380,23 +392,22 @@ onmessage = function(e) {
 			var newmessage = bfCbc.num2block32(rarray[0]) + bfCbc.num2block32(rarray[1]) + 
 				bfCbc.num2block32(rarray[2]) + bfCbc.num2block32(rarray[3]) +  data;
 			var encrypted = bfCbc.encrypt(newmessage, iv);
-			var ivarr = iv2u8arr(iv);
+			var noncearr = nonce2u8arr(nonce);
 			var arr = StringToUint8(encrypted);
 
 			// calculate 8 byte hmac
-			var hmacarr = new Uint8Array(ivarr.byteLength + arr.byteLength);
-			hmacarr.set(ivarr, 0);
-			hmacarr.set(arr, ivarr.byteLength);
+			var hmacarr = new Uint8Array(noncearr.byteLength + arr.byteLength);
+			hmacarr.set(noncearr, 0);
+			hmacarr.set(arr, noncearr.byteLength);
 
 			var blakehmac = new BLAKE2s(8, ecbkey);
 			blakehmac.update(hmacarr);
 			var hmac = blakehmac.digest();
 
-			var newarr = new Uint8Array(ivarr.byteLength + arr.byteLength + hmac.byteLength);
-			newarr.set(ivarr, 0);
-			newarr.set(arr, ivarr.byteLength);
-			newarr.set(hmac, ivarr.byteLength + arr.byteLength);
-
+			var newarr = new Uint8Array(noncearr.byteLength + arr.byteLength + hmac.byteLength);
+			newarr.set(noncearr, 0);
+			newarr.set(arr, noncearr.byteLength);
+			newarr.set(hmac, noncearr.byteLength + arr.byteLength);
 			var obj = {
 				uid: btoa(bfEcb.encrypt(uid)),
 				channel: btoa(bfEcb.encrypt(channel)),
