@@ -284,15 +284,13 @@ onmessage = function(e) {
 			var fullkey = StringToUint8(e.data[6]);
 			var isEncryptedChannel = e.data[7];
 
-			var round = new BLAKE2s();
-			round.update(fullkey);
+			var round = new BLAKE2s(32, fullkey);
 
 			var blakecb = new BLAKE2s(7); //56-bits max key len
 			blakecb.update(round.digest());
 			var ecbkey = blakecb.digest();
 
-			var round = new BLAKE2s();
-			round.update(fullkey);
+			var round = new BLAKE2s(32, fullkey);
 			round.update(fullkey);
 			var blakeaontecb = new BLAKE2s(8); //aont key len
 			blakeaontecb.update(round.digest());
@@ -302,8 +300,7 @@ onmessage = function(e) {
 			blakecbc.update(fullkey);
 			var cbckey = blakecbc.digest();
 
-			var round = new BLAKE2s();
-			round.update(fullkey);
+			var round = new BLAKE2s(32, fullkey);
 			round.update(fullkey);			
 			round.update(fullkey);
 
