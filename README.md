@@ -63,7 +63,7 @@ Please see https://mles.io for details about Mles protocol.
  * @param  uid {String}               IN: Mles User Id
  * @param  channel {String}           IN: Mles Channel
  * @param  isEncryptedChannel {bool}  IN: true, if the channel is already in encrypted form
- * @param  randArray {Uint32Array}    IN: random array filled with input of length 6 x Uint32
+ * @param  randArray {Uint32Array}    IN: random array filled with input of length 8 x Uint32
  * @param  isFull {bool}              IN: true, if a full message
  * @param  isImage {bool}             IN: true, if an image
  * @param  isMultipart {bool}         IN: true, if multipart send
