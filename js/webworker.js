@@ -89,16 +89,16 @@ function unscatterTime(rvalU32, svalU32)
 	return timeU15[0];
 }
 
-function createTimestamp(weekstamp) {
+function createTimestamp(valueofdate, weekstamp) {
 	var begin = BEGIN;
 	var this_week = new Date(begin.valueOf() + weekstamp*1000*60*60*24*7);
-	var timestamp = parseInt((Date.now() - this_week)/1000/60);
+	var timestamp = parseInt((valueofdate - this_week)/1000/60);
 	return timestamp;
 }
 
-function createWeekstamp() {
+function createWeekstamp(valueofdate) {
 	var begin = BEGIN;
-	var now = new Date(Date.now());
+	var now = new Date(valueofdate);
 	var weekstamp = parseInt((now - begin)/1000/60/60/24/7);
 	return weekstamp;
 }
@@ -356,6 +356,8 @@ onmessage = function(e) {
 			var isMultipart = e.data[8];
 			var isFirst = e.data[9];
 			var isLast = e.data[10];
+			var valueofdate = e.data[11];
+
 			var iv = randarr.slice(0,2);
 			var nonce = randarr.slice(0,4);
 			var rarray = randarr.slice(4);
@@ -364,8 +366,8 @@ onmessage = function(e) {
 				channel = bfEcb.trimZeros(bfEcb.decrypt(atob(channel)));
 			}
 
-			var weekstamp = createWeekstamp();
-			var timestamp = createTimestamp(weekstamp);
+			var weekstamp = createWeekstamp(valueofdate);
+			var timestamp = createTimestamp(valueofdate, weekstamp);
 			if(isFull) {
 				timestamp |= ISFULL;
 			}
