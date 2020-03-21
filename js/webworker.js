@@ -21,6 +21,8 @@ const ISMULTI = 0x4000;
 const ISFIRST = 0x2000;
 const ISLAST  = 0x1000;
 const BEGIN = new Date(Date.UTC(2018, 0, 1, 0, 0, 0));
+const HMAC_LEN = 12;
+const NONCE_LEN = 16;
 
 function scatterTime(rvalU32, valU32, timeU15)
 {
@@ -112,8 +114,17 @@ function readTimestamp(timestamp, weekstamp) {
 }
 
 function isEqualHmacs(hmac, rhmac) {
-	for(var i = 0; i < hmac.byteLength; i++) {
-		if(hmac[i] != rhmac[i]) {
+	var mac1 = new BLAKE2s(HMAC_LEN);
+	var mac2 = new BLAKE2s(HMAC_LEN);
+
+	mac1.update(hmac);
+	mac2.update(rhmac);
+
+	var hmac1 = mac1.digest();
+	var hmac2 = mac2.digest();
+
+	for(var i = 0; i < hmac1.byteLength; i++) {
+		if(hmac1[i] != hmac2[i]) {
 			return false;
 		}
 	}
@@ -121,7 +132,7 @@ function isEqualHmacs(hmac, rhmac) {
 }
 
 function nonce2u8arr(nonce) {
-	var nonceu8 = new Uint8Array(16);
+	var nonceu8 = new Uint8Array(NONCE_LEN);
 	nonceu8[0] = nonce[0] >> 24;
 	nonceu8[1] = nonce[0] >> 16 & 0xff;
 	nonceu8[2] = nonce[0] >> 8 & 0xff;
@@ -202,20 +213,20 @@ function open_socket(myport, myaddr, uid, channel) {
 				return;
 			}
 			//sanity
-			if(msg.message.byteLength <= 16 || msg.message.byteLength > 0xffffff) {
+			if(msg.message.byteLength <= NONCE_LEN || msg.message.byteLength > 0xffffff) {
 				return;
 			}
 
-			var noncem = msg.message.slice(0,16);
-			var arr = msg.message.slice(16,msg.message.byteLength-8);
-			var hmac = msg.message.slice(msg.message.byteLength-8, msg.message.byteLength)
+			var noncem = msg.message.slice(0,NONCE_LEN);
+			var arr = msg.message.slice(NONCE_LEN,msg.message.byteLength-HMAC_LEN);
+			var hmac = msg.message.slice(msg.message.byteLength-HMAC_LEN, msg.message.byteLength)
 			var message = Uint8ToString(arr);
 
 			//verify first hmac
 			var hmacarr = new Uint8Array(noncem.byteLength + arr.byteLength);
 			hmacarr.set(noncem, 0);
 			hmacarr.set(arr, noncem.byteLength);
-			var blakehmac = new BLAKE2s(8, ecbkey);
+			var blakehmac = new BLAKE2s(HMAC_LEN, ecbkey);
 			blakehmac.update(hmacarr);
 			var rhmac = blakehmac.digest();
 			if(false == isEqualHmacs(hmac, rhmac)) {
@@ -394,12 +405,12 @@ onmessage = function(e) {
 			var noncearr = nonce2u8arr(nonce);
 			var arr = StringToUint8(encrypted);
 
-			// calculate 8 byte hmac
+			// calculate hmac
 			var hmacarr = new Uint8Array(noncearr.byteLength + arr.byteLength);
 			hmacarr.set(noncearr, 0);
 			hmacarr.set(arr, noncearr.byteLength);
 
-			var blakehmac = new BLAKE2s(8, ecbkey);
+			var blakehmac = new BLAKE2s(HMAC_LEN, ecbkey);
 			blakehmac.update(hmacarr);
 			var hmac = blakehmac.digest();
 
