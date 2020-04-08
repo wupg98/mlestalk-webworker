@@ -8,83 +8,80 @@
 
 importScripts('cbor.js', 'blake2s.js', 'blowfish.js');
 
-var webSocket;
-var myaddr;
-var myport;
-var myuid;
-var mychannel;
-var ecbkey;
+let webSocket;
+let myaddr;
+let myport;
+let myuid;
+let mychannel;
+let ecbkey;
 const SCATTERSIZE = 15;
-const ISFULL  = 0x8000
+const ISFULL = 0x8000
 const ISIMAGE = 0x4000;
 const ISMULTI = 0x4000;
 const ISFIRST = 0x2000;
-const ISLAST  = 0x1000;
+const ISLAST = 0x1000;
 const BEGIN = new Date(Date.UTC(2018, 0, 1, 0, 0, 0));
 const HMAC_LEN = 12;
 const NONCE_LEN = 16;
 
-function scatterTime(rvalU32, valU32, timeU15)
-{
+function scatterTime(rvalU32, valU32, timeU15) {
 	//check first which bits to use
-	var numofones = 0;
-	var isOnes = true;
-	for (var i = 31; i >= 0; i--) {
-		var bit = new Uint32Array(1);
+	let tbit = new Uint32Array(1);
+	let bit = new Uint32Array(1);
+	let numofones = 0;
+	let isOnes = true;
+	for (let i = 31; i >= 0; i--) {
 		bit[0] = (rvalU32 & (1 << i)) >> i;
-		if(bit[0] > 0) {
+		if (bit[0] > 0) {
 			numofones++;
 		}
 	}
-	var timeslot = SCATTERSIZE;
-	if(numofones <= timeslot)
-		isOnes = false;	
-	for (var i = 31; i >= 0; i--) {
+	let timeslot = SCATTERSIZE;
+	if (numofones <= timeslot)
+		isOnes = false;
+	for (let i = 31; i >= 0; i--) {
 		bit[0] = (rvalU32 & (1 << i)) >> i;
-		if((isOnes && bit[0] > 0) || (false == isOnes && 0 == bit[0])) {
-			var tbit = new Uint32Array(1);
+		if ((isOnes && bit[0] > 0) || (false == isOnes && 0 == bit[0])) {
 			//apply setting to next item
 			tbit[0] = (timeU15 & (1 << timeslot)) >> timeslot;
-			if(tbit[0] > 0) {
+			if (tbit[0] > 0) {
 				valU32 |= (1 << i);
 			}
 			else {
-				valU32 &= ~(1 << i);				
+				valU32 &= ~(1 << i);
 			}
 			timeslot--;
-			if(timeslot < 0)
+			if (timeslot < 0)
 				break;
 		}
 	}
 	return valU32;
 }
 
-function unscatterTime(rvalU32, svalU32)
-{
+function unscatterTime(rvalU32, svalU32) {
 	//check first which bits to use
-	var numofones = 0;
-	var timeU15 = new Uint32Array(1);
-	var isOnes = true;
-	for (var i = 31; i >= 0; i--) {
-		var bit = new Uint32Array(1);
+	let timeU15 = new Uint32Array(1);
+	let sbit = new Uint32Array(1);
+	let bit = new Uint32Array(1);
+	let numofones = 0;
+	let isOnes = true;
+	for (let i = 31; i >= 0; i--) {
 		bit[0] = (rvalU32 & (1 << i)) >> i;
-		if(bit[0] > 0) {
+		if (bit[0] > 0) {
 			numofones++;
 		}
 	}
-	var timeslot = SCATTERSIZE;
-	if(numofones <= timeslot)
-		isOnes = false;	
-	for (var i = 31; i >= 0; i--) {
-		var bit = new Uint32Array(1);
+	let timeslot = SCATTERSIZE;
+	if (numofones <= timeslot)
+		isOnes = false;
+	for (let i = 31; i >= 0; i--) {
 		bit[0] = (rvalU32 & (1 << i)) >> i;
-		if((isOnes && bit[0] > 0) || (false == isOnes && 0 == bit[0])) {
-			var sbit = new Uint32Array(1);
+		if ((isOnes && bit[0] > 0) || (false == isOnes && 0 == bit[0])) {
 			sbit[0] = (svalU32 & (1 << i)) >> i;
-			if(sbit[0] > 0)
+			if (sbit[0] > 0)
 				timeU15[0] |= (1 << timeslot);
 			timeslot--;
-			if(timeslot < 0)
+			if (timeslot < 0)
 				break;
 		}
 	}
@@ -92,39 +89,39 @@ function unscatterTime(rvalU32, svalU32)
 }
 
 function createTimestamp(valueofdate, weekstamp) {
-	var begin = BEGIN;
-	var this_week = new Date(begin.valueOf() + weekstamp*1000*60*60*24*7);
-	var timestamp = parseInt((valueofdate - this_week)/1000/60);
+	let begin = BEGIN;
+	let this_week = new Date(begin.valueOf() + weekstamp * 1000 * 60 * 60 * 24 * 7);
+	let timestamp = parseInt((valueofdate - this_week) / 1000 / 60);
 	return timestamp;
 }
 
 function createWeekstamp(valueofdate) {
-	var begin = BEGIN;
-	var now = new Date(valueofdate);
-	var weekstamp = parseInt((now - begin)/1000/60/60/24/7);
+	let begin = BEGIN;
+	let now = new Date(valueofdate);
+	let weekstamp = parseInt((now - begin) / 1000 / 60 / 60 / 24 / 7);
 	return weekstamp;
 }
 
 function readTimestamp(timestamp, weekstamp) {
-	var begin = BEGIN;
-	var weeks = new Date(begin.valueOf() + weekstamp*1000*60*60*24*7);
-	var extension = timestamp * 1000 * 60;	
-	var time = new Date(weeks.valueOf() + extension);
+	let begin = BEGIN;
+	let weeks = new Date(begin.valueOf() + weekstamp * 1000 * 60 * 60 * 24 * 7);
+	let extension = timestamp * 1000 * 60;
+	let time = new Date(weeks.valueOf() + extension);
 	return time;
 }
 
 function isEqualHmacs(hmac, rhmac) {
-	var mac1 = new BLAKE2s(HMAC_LEN);
-	var mac2 = new BLAKE2s(HMAC_LEN);
+	let mac1 = new BLAKE2s(HMAC_LEN);
+	let mac2 = new BLAKE2s(HMAC_LEN);
 
 	mac1.update(hmac);
 	mac2.update(rhmac);
 
-	var hmac1 = mac1.digest();
-	var hmac2 = mac2.digest();
+	let hmac1 = mac1.digest();
+	let hmac2 = mac2.digest();
 
-	for(var i = 0; i < hmac1.byteLength; i++) {
-		if(hmac1[i] != hmac2[i]) {
+	for (let i = 0; i < hmac1.byteLength; i++) {
+		if (hmac1[i] != hmac2[i]) {
 			return false;
 		}
 	}
@@ -132,7 +129,7 @@ function isEqualHmacs(hmac, rhmac) {
 }
 
 function nonce2u8arr(nonce) {
-	var nonceu8 = new Uint8Array(NONCE_LEN);
+	let nonceu8 = new Uint8Array(NONCE_LEN);
 	nonceu8[0] = nonce[0] >> 24;
 	nonceu8[1] = nonce[0] >> 16 & 0xff;
 	nonceu8[2] = nonce[0] >> 8 & 0xff;
@@ -153,7 +150,7 @@ function nonce2u8arr(nonce) {
 }
 
 function u8arr2nonce(noncem) {
-	var nonce = new Uint32Array(4);
+	let nonce = new Uint32Array(4);
 	nonce[0] = noncem[0] << 24 | noncem[1] << 16 | noncem[2] << 8 | noncem[3];
 	nonce[1] = noncem[4] << 24 | noncem[5] << 16 | noncem[6] << 8 | noncem[7];
 	return nonce;
@@ -165,25 +162,25 @@ function load32(a, i) {
 }
 
 function store32(a, i, val) {
-	a[i+0] = val & 0xff;
-	a[i+1] = (val & 0xff00) >> 8;
-	a[i+2] = (val & 0xff0000) >> 16;
-	a[i+3] = (val & 0xff000000) >> 24;
+	a[i + 0] = val & 0xff;
+	a[i + 1] = (val & 0xff00) >> 8;
+	a[i + 2] = (val & 0xff0000) >> 16;
+	a[i + 3] = (val & 0xff000000) >> 24;
 	return a;
-} 
+}
 
 function StringToUint8(str) {
-	var arr = new Uint8Array(str.length);
-	var len = str.length;
-	for (var i=0; i < len; i++) {
+	let arr = new Uint8Array(str.length);
+	let len = str.length;
+	for (let i = 0; i < len; i++) {
 		arr[i] = str.charCodeAt(i);
 	}
 	return arr;
 }
 
 function Uint8ToString(arr) {
-	var str = new String('');
-	for(var i=0; i < arr.length; i++) {
+	let str = new String('');
+	for (let i = 0; i < arr.length; i++) {
 		str += String.fromCharCode(arr[i]);
 	};
 	return str;
@@ -198,249 +195,257 @@ function open_socket(myport, myaddr, uid, channel) {
 		+ "?myname=" + uid
 		+ "&mychannel=" + channel, "mles-websocket");
 	webSocket.binaryType = "arraybuffer";
-	webSocket.onopen = function(event) {
-		var uid = bfEcb.trimZeros(bfEcb.decrypt(atob(myuid)));
-		var channel = bfEcb.trimZeros(bfEcb.decrypt(atob(mychannel)));	
+	webSocket.onopen = function (event) {
+		let uid = bfEcb.trimZeros(bfEcb.decrypt(atob(myuid)));
+		let channel = bfEcb.trimZeros(bfEcb.decrypt(atob(mychannel)));
 		postMessage(["init", uid, channel, myuid, mychannel]);
 	};
 
-	webSocket.onmessage = function(event) {
-		if(event.data) {
-			var msg;
+	webSocket.onmessage = function (event) {
+		if (event.data) {
+			let msg;
 			try {
 				msg = CBOR.decode(event.data);
-			} catch(err) {
+			} catch (err) {
 				return;
 			}
 			//sanity
-			if(msg.message.byteLength <= NONCE_LEN || msg.message.byteLength > 0xffffff) {
+			if (msg.message.byteLength <= NONCE_LEN || msg.message.byteLength > 0xffffff) {
 				return;
 			}
 
-			var noncem = msg.message.slice(0,NONCE_LEN);
-			var arr = msg.message.slice(NONCE_LEN,msg.message.byteLength-HMAC_LEN);
-			var hmac = msg.message.slice(msg.message.byteLength-HMAC_LEN, msg.message.byteLength)
-			var message = Uint8ToString(arr);
+			let noncem = msg.message.slice(0, NONCE_LEN);
+			let arr = msg.message.slice(NONCE_LEN, msg.message.byteLength - HMAC_LEN);
+			let hmac = msg.message.slice(msg.message.byteLength - HMAC_LEN, msg.message.byteLength)
+			let message = Uint8ToString(arr);
 
 			//verify first hmac
-			var hmacarr = new Uint8Array(noncem.byteLength + arr.byteLength);
+			let hmacarr = new Uint8Array(noncem.byteLength + arr.byteLength);
 			hmacarr.set(noncem, 0);
 			hmacarr.set(arr, noncem.byteLength);
-			var blakehmac = new BLAKE2s(HMAC_LEN, ecbkey);
+			let blakehmac = new BLAKE2s(HMAC_LEN, ecbkey);
 			blakehmac.update(hmacarr);
-			var rhmac = blakehmac.digest();
-			if(false == isEqualHmacs(hmac, rhmac)) {
+			let rhmac = blakehmac.digest();
+			if (false == isEqualHmacs(hmac, rhmac)) {
 				return;
 			}
 
-			var nonce = u8arr2nonce(noncem);
-			var iv = nonce.slice(0,2);
+			let nonce = u8arr2nonce(noncem);
+			let iv = nonce.slice(0, 2);
 
-			var uid = bfEcb.trimZeros(bfEcb.decrypt(atob(msg.uid)));
-			var channel = bfEcb.trimZeros(bfEcb.decrypt(atob(msg.channel)));
-			var decrypted = bfCbc.decrypt(message, iv);
+			let uid = bfEcb.trimZeros(bfEcb.decrypt(atob(msg.uid)));
+			let channel = bfEcb.trimZeros(bfEcb.decrypt(atob(msg.channel)));
+			let decrypted = bfCbc.decrypt(message, iv);
 
-			if(decrypted.length < 16) {
+			if (decrypted.length < 16) {
 				return;
 			}
 
-			var timestring = decrypted.slice(0,8);
-			var rarray = bfCbc.split64by32(timestring);
-			var timeU15 = unscatterTime(rarray[0], rarray[1]);
-			var weekstring = decrypted.slice(8,16);
-			var warray = bfCbc.split64by32(weekstring);
-			var weekU15 = unscatterTime(warray[0], warray[1]);
-			var msgDate = readTimestamp(timeU15 & ~(ISFULL|ISIMAGE), weekU15 & ~(ISMULTI|ISFIRST|ISLAST));
-			var message = decrypted.slice(16, decrypted.byteLength);
+			let timestring = decrypted.slice(0, 8);
+			let rarray = bfCbc.split64by32(timestring);
+			let timeU15 = unscatterTime(rarray[0], rarray[1]);
+			let weekstring = decrypted.slice(8, 16);
+			let warray = bfCbc.split64by32(weekstring);
+			let weekU15 = unscatterTime(warray[0], warray[1]);
+			let msgDate = readTimestamp(timeU15 & ~(ISFULL | ISIMAGE), weekU15 & ~(ISMULTI | ISFIRST | ISLAST));
+			message = decrypted.slice(16, decrypted.byteLength);
 
-			var isFull = false;
-			var isImage = false;
-			var isMultipart = false;
-			var isFirst = false;
-			var isLast = false;
-			if(timeU15 & ISFULL) {
+			let isFull = false;
+			let isImage = false;
+			let isMultipart = false;
+			let isFirst = false;
+			let isLast = false;
+			if (timeU15 & ISFULL) {
 				isFull = true;
 			}
-			if(timeU15 & ISIMAGE)
+			if (timeU15 & ISIMAGE)
 				isImage = true;
-			if(weekU15 & ISMULTI)
+			if (weekU15 & ISMULTI)
 				isMultipart = true;
-			if(weekU15 & ISFIRST)
+			if (weekU15 & ISFIRST)
 				isFirst = true;
-			if(weekU15 & ISLAST)
+			if (weekU15 & ISLAST)
 				isLast = true;
 
 			postMessage(["data", uid, channel, msgDate.valueOf(), message, isFull, isImage, isMultipart, isFirst, isLast]);
 		}
 	};
 
-	webSocket.onclose = function(event) {
+	webSocket.onclose = function (event) {
 		webSocket.close();
-		var uid = bfEcb.trimZeros(bfEcb.decrypt(atob(myuid)));
-		var channel = bfEcb.trimZeros(bfEcb.decrypt(atob(mychannel)));	
+		let uid = bfEcb.trimZeros(bfEcb.decrypt(atob(myuid)));
+		let channel = bfEcb.trimZeros(bfEcb.decrypt(atob(mychannel)));
 		postMessage(["close", uid, channel, myuid, mychannel]);
 	};
 }
 
-onmessage = function(e) {
-	var cmd = e.data[0];
-	var data = e.data[1];
+onmessage = function (e) {
+	let cmd = e.data[0];
+	let data = e.data[1];
 
-	switch(cmd) {
+	switch (cmd) {
 		case "init":
-			myaddr = e.data[2];
-			myport = e.data[3];
-			var uid = e.data[4];
-			var channel = e.data[5];
-			var fullkey = StringToUint8(e.data[6]);
-			var isEncryptedChannel = e.data[7];
+			{
+				myaddr = e.data[2];
+				myport = e.data[3];
+				let uid = e.data[4];
+				let channel = e.data[5];
+				let fullkey = StringToUint8(e.data[6]);
+				let isEncryptedChannel = e.data[7];
 
-			var round = new BLAKE2s(32, fullkey);
+				let round = new BLAKE2s(32, fullkey);
 
-			var blakecb = new BLAKE2s(7); //56-bits max key len
-			blakecb.update(round.digest());
-			var ecbkey = blakecb.digest();
+				let blakecb = new BLAKE2s(7); //56-bits max key len
+				blakecb.update(round.digest());
+				let ecbkey = blakecb.digest();
 
-			var round = new BLAKE2s(32, fullkey);
-			round.update(fullkey);
-			var blakeaontecb = new BLAKE2s(8); //aont key len
-			blakeaontecb.update(round.digest());
-			var ecbaontkey = blakeaontecb.digest();
+				round = new BLAKE2s(32, fullkey);
+				round.update(fullkey);
+				let blakeaontecb = new BLAKE2s(8); //aont key len
+				blakeaontecb.update(round.digest());
+				let ecbaontkey = blakeaontecb.digest();
 
-			var blakecbc = new BLAKE2s(7); //56-bits max key len
-			blakecbc.update(fullkey);
-			var cbckey = blakecbc.digest();
+				let blakecbc = new BLAKE2s(7); //56-bits max key len
+				blakecbc.update(fullkey);
+				let cbckey = blakecbc.digest();
 
-			var round = new BLAKE2s(32, fullkey);
-			round.update(fullkey);			
-			round.update(fullkey);
+				round = new BLAKE2s(32, fullkey);
+				round.update(fullkey);
+				round.update(fullkey);
 
-			//drop unused
-			fullkey = "";
+				//drop unused
+				fullkey = "";
 
-			var blakeaontcbc = new BLAKE2s(8); //aont key len
-			blakeaontcbc.update(round.digest());
-			var cbcaontkey = blakeaontcbc.digest();
+				let blakeaontcbc = new BLAKE2s(8); //aont key len
+				blakeaontcbc.update(round.digest());
+				let cbcaontkey = blakeaontcbc.digest();
 
-			bfEcb = new Blowfish(ecbkey, ecbaontkey);
-			bfCbc = new Blowfish(cbckey, cbcaontkey, "cbc");
-			myuid = btoa(bfEcb.encrypt(uid));
+				bfEcb = new Blowfish(ecbkey, ecbaontkey);
+				bfCbc = new Blowfish(cbckey, cbcaontkey, "cbc");
+				myuid = btoa(bfEcb.encrypt(uid));
 
-			var bfchannel;
-			if(!isEncryptedChannel) {
-				bfchannel = bfEcb.encrypt(channel);
-				mychannel = btoa(bfchannel);
-			}
-			else {
-				mychannel = channel;
-			}
-			open_socket(myport, myaddr, myuid, mychannel);
-			break;
-		case "reconnect":
-			var uid = e.data[2];
-			var channel = e.data[3];
-			var isEncryptedChannel = e.data[4];
-
-			uid = btoa(bfEcb.encrypt(uid));
-			if(!isEncryptedChannel) {
-				bfchannel = bfEcb.encrypt(channel);
-				channel = btoa(bfchannel);
-			}
-			// verify that we have already opened the channel earlier
-			if(myuid === uid && mychannel === channel) {
+				let bfchannel;
+				if (!isEncryptedChannel) {
+					bfchannel = bfEcb.encrypt(channel);
+					mychannel = btoa(bfchannel);
+				}
+				else {
+					mychannel = channel;
+				}
 				open_socket(myport, myaddr, myuid, mychannel);
 			}
 			break;
+		case "reconnect":
+			{
+				let uid = e.data[2];
+				let channel = e.data[3];
+				let isEncryptedChannel = e.data[4];
+
+				uid = btoa(bfEcb.encrypt(uid));
+				if (!isEncryptedChannel) {
+					bfchannel = bfEcb.encrypt(channel);
+					channel = btoa(bfchannel);
+				}
+				// verify that we have already opened the channel earlier
+				if (myuid === uid && mychannel === channel) {
+					open_socket(myport, myaddr, myuid, mychannel);
+				}
+			}
+			break;
 		case "send":
-			var uid = e.data[2];
-			var channel = e.data[3];
-			var isEncryptedChannel = e.data[4];
-			var randarr = e.data[5];
+			{
+				let uid = e.data[2];
+				let channel = e.data[3];
+				let isEncryptedChannel = e.data[4];
+				let randarr = e.data[5];
 
-			//sanity
-			if(randarr.length != 8) {
-				break;
-			}
-
-			var isFull = e.data[6];
-			var isImage = e.data[7];
-			var isMultipart = e.data[8];
-			var isFirst = e.data[9];
-			var isLast = e.data[10];
-			var valueofdate = e.data[11];
-
-			var iv = randarr.slice(0,2);
-			var nonce = randarr.slice(0,4);
-			var rarray = randarr.slice(4);
-
-			if(isEncryptedChannel) {
-				channel = bfEcb.trimZeros(bfEcb.decrypt(atob(channel)));
-			}
-
-			var weekstamp = createWeekstamp(valueofdate);
-			var timestamp = createTimestamp(valueofdate, weekstamp);
-			if(isFull) {
-				timestamp |= ISFULL;
-			}
-			if(isImage) {
-				timestamp |= ISIMAGE;
-			}
-			if(isMultipart) {
-				weekstamp |= ISMULTI;
-				if(isFirst) {
-					weekstamp |= ISFIRST;	
+				//sanity
+				if (randarr.length != 8) {
+					break;
 				}
-				if(isLast) {
-					weekstamp |= ISLAST;	
+
+				let isFull = e.data[6];
+				let isImage = e.data[7];
+				let isMultipart = e.data[8];
+				let isFirst = e.data[9];
+				let isLast = e.data[10];
+				let valueofdate = e.data[11];
+
+				let iv = randarr.slice(0, 2);
+				let nonce = randarr.slice(0, 4);
+				let rarray = randarr.slice(4);
+
+				if (isEncryptedChannel) {
+					channel = bfEcb.trimZeros(bfEcb.decrypt(atob(channel)));
 				}
+
+				let weekstamp = createWeekstamp(valueofdate);
+				let timestamp = createTimestamp(valueofdate, weekstamp);
+				if (isFull) {
+					timestamp |= ISFULL;
+				}
+				if (isImage) {
+					timestamp |= ISIMAGE;
+				}
+				if (isMultipart) {
+					weekstamp |= ISMULTI;
+					if (isFirst) {
+						weekstamp |= ISFIRST;
+					}
+					if (isLast) {
+						weekstamp |= ISLAST;
+					}
+				}
+				let sval = scatterTime(rarray[0], rarray[1], timestamp);
+				rarray[1] = sval;
+				sval = scatterTime(rarray[2], rarray[3], weekstamp);
+				rarray[3] = sval;
+
+				let newmessage = bfCbc.num2block32(rarray[0]) + bfCbc.num2block32(rarray[1]) +
+					bfCbc.num2block32(rarray[2]) + bfCbc.num2block32(rarray[3]) + data;
+				let encrypted = bfCbc.encrypt(newmessage, iv);
+				let noncearr = nonce2u8arr(nonce);
+				let arr = StringToUint8(encrypted);
+
+				// calculate hmac
+				let hmacarr = new Uint8Array(noncearr.byteLength + arr.byteLength);
+				hmacarr.set(noncearr, 0);
+				hmacarr.set(arr, noncearr.byteLength);
+
+				let blakehmac = new BLAKE2s(HMAC_LEN, ecbkey);
+				blakehmac.update(hmacarr);
+				let hmac = blakehmac.digest();
+
+				let newarr = new Uint8Array(noncearr.byteLength + arr.byteLength + hmac.byteLength);
+				newarr.set(noncearr, 0);
+				newarr.set(arr, noncearr.byteLength);
+				newarr.set(hmac, noncearr.byteLength + arr.byteLength);
+				let obj = {
+					uid: btoa(bfEcb.encrypt(uid)),
+					channel: btoa(bfEcb.encrypt(channel)),
+					message: newarr
+				};
+				let cbor;
+				try {
+					cbor = CBOR.encode(obj);
+				} catch (err) {
+					break;
+				}
+				try {
+					webSocket.send(cbor);
+				} catch (err) {
+					break;
+				}
+				postMessage(["send", uid, channel, isMultipart]);
 			}
-			var sval = scatterTime(rarray[0], rarray[1], timestamp);
-			rarray[1] = sval;
-			sval = scatterTime(rarray[2], rarray[3], weekstamp);
-			rarray[3] = sval;
-
-			var newmessage = bfCbc.num2block32(rarray[0]) + bfCbc.num2block32(rarray[1]) + 
-				bfCbc.num2block32(rarray[2]) + bfCbc.num2block32(rarray[3]) +  data;
-			var encrypted = bfCbc.encrypt(newmessage, iv);
-			var noncearr = nonce2u8arr(nonce);
-			var arr = StringToUint8(encrypted);
-
-			// calculate hmac
-			var hmacarr = new Uint8Array(noncearr.byteLength + arr.byteLength);
-			hmacarr.set(noncearr, 0);
-			hmacarr.set(arr, noncearr.byteLength);
-
-			var blakehmac = new BLAKE2s(HMAC_LEN, ecbkey);
-			blakehmac.update(hmacarr);
-			var hmac = blakehmac.digest();
-
-			var newarr = new Uint8Array(noncearr.byteLength + arr.byteLength + hmac.byteLength);
-			newarr.set(noncearr, 0);
-			newarr.set(arr, noncearr.byteLength);
-			newarr.set(hmac, noncearr.byteLength + arr.byteLength);
-			var obj = {
-				uid: btoa(bfEcb.encrypt(uid)),
-				channel: btoa(bfEcb.encrypt(channel)),
-				message: newarr
-			};
-			var cbor;
-			try {
-				cbor = CBOR.encode(obj);
-			} catch(err) {
-				break;
-			}
-			try {
-				webSocket.send(cbor);
-			} catch(err) {
-				break; 
-			}
-			postMessage(["send", uid, channel, isMultipart]);
 			break;
 		case "close":
-			var uid = e.data[2];
-			var channel = e.data[3];
-			var isEncryptedChannel = e.data[4];
-			webSocket.close();
+			{
+				//let uid = e.data[2];
+				//let channel = e.data[3];
+				//let isEncryptedChannel = e.data[4];
+				webSocket.close();
+			}
 			break;
 	}
 }
