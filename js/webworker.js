@@ -8,12 +8,12 @@
 
 importScripts('cbor.js', 'blake2s.js', 'blowfish.js');
 
-let webSocket;
-let myaddr;
-let myport;
-let myuid;
-let mychannel;
-let ecbkey;
+let gWebSocket;
+let gMyAddr;
+let gMyPort;
+let gMyUid;
+let gMyChannel;
+let gEcbKey;
 const SCATTERSIZE = 15;
 const ISFULL = 0x8000
 const ISIMAGE = 0x4000;
@@ -186,96 +186,129 @@ function Uint8ToString(arr) {
 	return str;
 }
 
-function open_socket(myport, myaddr, uid, channel) {
-	if (webSocket !== undefined && webSocket.readyState == WebSocket.OPEN) {
+function processOnMessageData(msg) {
+	//sanity
+	if (msg.message.byteLength <= NONCE_LEN || msg.message.byteLength > 0xffffff) {
 		return;
 	}
 
-	webSocket = new WebSocket("wss://" + myaddr + ":" + myport
+	let noncem = msg.message.slice(0, NONCE_LEN);
+	let arr = msg.message.slice(NONCE_LEN, msg.message.byteLength - HMAC_LEN);
+	let hmac = msg.message.slice(msg.message.byteLength - HMAC_LEN, msg.message.byteLength)
+	let message = Uint8ToString(arr);
+
+	//verify first hmac
+	let hmacarr = new Uint8Array(noncem.byteLength + arr.byteLength);
+	hmacarr.set(noncem, 0);
+	hmacarr.set(arr, noncem.byteLength);
+	let blakehmac = new BLAKE2s(HMAC_LEN, gEcbKey);
+	blakehmac.update(hmacarr);
+	let rhmac = blakehmac.digest();
+	if (false == isEqualHmacs(hmac, rhmac)) {
+		return;
+	}
+
+	let nonce = u8arr2nonce(noncem);
+	let iv = nonce.slice(0, 2);
+
+	let uid = bfEcb.trimZeros(bfEcb.decrypt(atob(msg.uid)));
+	let channel = bfEcb.trimZeros(bfEcb.decrypt(atob(msg.channel)));
+	let decrypted = bfCbc.decrypt(message, iv);
+
+	if (decrypted.length < 16) {
+		return;
+	}
+
+	let timestring = decrypted.slice(0, 8);
+	let rarray = bfCbc.split64by32(timestring);
+	let timeU15 = unscatterTime(rarray[0], rarray[1]);
+	let weekstring = decrypted.slice(8, 16);
+	let warray = bfCbc.split64by32(weekstring);
+	let weekU15 = unscatterTime(warray[0], warray[1]);
+	let msgDate = readTimestamp(timeU15 & ~(ISFULL | ISIMAGE), weekU15 & ~(ISMULTI | ISFIRST | ISLAST));
+	message = decrypted.slice(16, decrypted.byteLength);
+
+	let isFull = false;
+	let isImage = false;
+	let isMultipart = false;
+	let isFirst = false;
+	let isLast = false;
+	if (timeU15 & ISFULL) {
+		isFull = true;
+	}
+	if (timeU15 & ISIMAGE)
+		isImage = true;
+	if (weekU15 & ISMULTI)
+		isMultipart = true;
+	if (weekU15 & ISFIRST)
+		isFirst = true;
+	if (weekU15 & ISLAST)
+		isLast = true;
+
+	postMessage(["data", uid, channel, msgDate.valueOf(), message, isFull, isImage, isMultipart, isFirst, isLast]);
+}
+
+function msgDecode(data) {
+	try {
+		return CBOR.decode(data);
+	} catch (err) {
+		return null;
+	}
+}
+
+function msgEncode(obj) {
+	try {
+		return CBOR.encode(obj);
+	} catch (err) {
+		return null;
+	}
+}
+
+function processOnClose() {
+	gWebSocket.close();
+	let uid = bfEcb.trimZeros(bfEcb.decrypt(atob(gMyUid)));
+	let channel = bfEcb.trimZeros(bfEcb.decrypt(atob(gMyChannel)));
+	postMessage(["close", uid, channel, gMyUid, gMyChannel]);
+}
+
+function processOnOpen() {
+	let uid = bfEcb.trimZeros(bfEcb.decrypt(atob(gMyUid)));
+	let channel = bfEcb.trimZeros(bfEcb.decrypt(atob(gMyChannel)));
+	postMessage(["init", uid, channel, gMyUid, gMyChannel]);
+}
+
+function openSocket(gMyPort, gMyAddr, uid, channel) {
+	if (gWebSocket !== undefined && gWebSocket.readyState == WebSocket.OPEN) {
+		return;
+	}
+
+	gWebSocket = new WebSocket("wss://" + gMyAddr + ":" + gMyPort
 		+ "?myname=" + uid
-		+ "&mychannel=" + channel, "mles-websocket");
-	webSocket.binaryType = "arraybuffer";
-	webSocket.onopen = function (event) {
-		let uid = bfEcb.trimZeros(bfEcb.decrypt(atob(myuid)));
-		let channel = bfEcb.trimZeros(bfEcb.decrypt(atob(mychannel)));
-		postMessage(["init", uid, channel, myuid, mychannel]);
+		+ "&gMyChannel=" + channel, "mles-websocket");
+	gWebSocket.binaryType = "arraybuffer";
+	gWebSocket.onopen = function (event) {
+		let ret = processOnOpen();
+		if(ret < 0)
+			console.log("Process on open failed: " + ret);
+
 	};
 
-	webSocket.onmessage = function (event) {
+	gWebSocket.onmessage = function (event) {
 		if (event.data) {
-			let msg;
-			try {
-				msg = CBOR.decode(event.data);
-			} catch (err) {
+			let msg = msgDecode(event.data);
+			if(!msg)
 				return;
-			}
-			//sanity
-			if (msg.message.byteLength <= NONCE_LEN || msg.message.byteLength > 0xffffff) {
-				return;
-			}
 
-			let noncem = msg.message.slice(0, NONCE_LEN);
-			let arr = msg.message.slice(NONCE_LEN, msg.message.byteLength - HMAC_LEN);
-			let hmac = msg.message.slice(msg.message.byteLength - HMAC_LEN, msg.message.byteLength)
-			let message = Uint8ToString(arr);
-
-			//verify first hmac
-			let hmacarr = new Uint8Array(noncem.byteLength + arr.byteLength);
-			hmacarr.set(noncem, 0);
-			hmacarr.set(arr, noncem.byteLength);
-			let blakehmac = new BLAKE2s(HMAC_LEN, ecbkey);
-			blakehmac.update(hmacarr);
-			let rhmac = blakehmac.digest();
-			if (false == isEqualHmacs(hmac, rhmac)) {
-				return;
-			}
-
-			let nonce = u8arr2nonce(noncem);
-			let iv = nonce.slice(0, 2);
-
-			let uid = bfEcb.trimZeros(bfEcb.decrypt(atob(msg.uid)));
-			let channel = bfEcb.trimZeros(bfEcb.decrypt(atob(msg.channel)));
-			let decrypted = bfCbc.decrypt(message, iv);
-
-			if (decrypted.length < 16) {
-				return;
-			}
-
-			let timestring = decrypted.slice(0, 8);
-			let rarray = bfCbc.split64by32(timestring);
-			let timeU15 = unscatterTime(rarray[0], rarray[1]);
-			let weekstring = decrypted.slice(8, 16);
-			let warray = bfCbc.split64by32(weekstring);
-			let weekU15 = unscatterTime(warray[0], warray[1]);
-			let msgDate = readTimestamp(timeU15 & ~(ISFULL | ISIMAGE), weekU15 & ~(ISMULTI | ISFIRST | ISLAST));
-			message = decrypted.slice(16, decrypted.byteLength);
-
-			let isFull = false;
-			let isImage = false;
-			let isMultipart = false;
-			let isFirst = false;
-			let isLast = false;
-			if (timeU15 & ISFULL) {
-				isFull = true;
-			}
-			if (timeU15 & ISIMAGE)
-				isImage = true;
-			if (weekU15 & ISMULTI)
-				isMultipart = true;
-			if (weekU15 & ISFIRST)
-				isFirst = true;
-			if (weekU15 & ISLAST)
-				isLast = true;
-
-			postMessage(["data", uid, channel, msgDate.valueOf(), message, isFull, isImage, isMultipart, isFirst, isLast]);
+			let ret = processOnMessageData(msg);
+			if(ret < 0)
+				console.log("Process on message data failed: " + ret);
 		}
 	};
 
-	webSocket.onclose = function (event) {
-		webSocket.close();
-		let uid = bfEcb.trimZeros(bfEcb.decrypt(atob(myuid)));
-		let channel = bfEcb.trimZeros(bfEcb.decrypt(atob(mychannel)));
-		postMessage(["close", uid, channel, myuid, mychannel]);
+	gWebSocket.onclose = function (event) {
+		let ret = processOnClose();
+		if(ret < 0)
+			console.log("Process on close failed: " + ret)
 	};
 }
 
@@ -286,18 +319,19 @@ onmessage = function (e) {
 	switch (cmd) {
 		case "init":
 			{
-				myaddr = e.data[2];
-				myport = e.data[3];
+				gMyAddr = e.data[2];
+				gMyPort = e.data[3];
 				let uid = e.data[4];
 				let channel = e.data[5];
 				let fullkey = StringToUint8(e.data[6]);
 				let isEncryptedChannel = e.data[7];
 
+
 				let round = new BLAKE2s(32, fullkey);
 
 				let blakecb = new BLAKE2s(7); //56-bits max key len
 				blakecb.update(round.digest());
-				let ecbkey = blakecb.digest();
+				let gEcbKey = blakecb.digest();
 
 				round = new BLAKE2s(32, fullkey);
 				round.update(fullkey);
@@ -320,19 +354,19 @@ onmessage = function (e) {
 				blakeaontcbc.update(round.digest());
 				let cbcaontkey = blakeaontcbc.digest();
 
-				bfEcb = new Blowfish(ecbkey, ecbaontkey);
+				bfEcb = new Blowfish(gEcbKey, ecbaontkey);
 				bfCbc = new Blowfish(cbckey, cbcaontkey, "cbc");
-				myuid = btoa(bfEcb.encrypt(uid));
+				gMyUid = btoa(bfEcb.encrypt(uid));
 
 				let bfchannel;
 				if (!isEncryptedChannel) {
 					bfchannel = bfEcb.encrypt(channel);
-					mychannel = btoa(bfchannel);
+					gMyChannel = btoa(bfchannel);
 				}
 				else {
-					mychannel = channel;
+					gMyChannel = channel;
 				}
-				open_socket(myport, myaddr, myuid, mychannel);
+				openSocket(gMyPort, gMyAddr, gMyUid, gMyChannel);
 			}
 			break;
 		case "reconnect":
@@ -347,8 +381,8 @@ onmessage = function (e) {
 					channel = btoa(bfchannel);
 				}
 				// verify that we have already opened the channel earlier
-				if (myuid === uid && mychannel === channel) {
-					open_socket(myport, myaddr, myuid, mychannel);
+				if (gMyUid === uid && gMyChannel === channel) {
+					openSocket(gMyPort, gMyAddr, gMyUid, gMyChannel);
 				}
 			}
 			break;
@@ -412,7 +446,7 @@ onmessage = function (e) {
 				hmacarr.set(noncearr, 0);
 				hmacarr.set(arr, noncearr.byteLength);
 
-				let blakehmac = new BLAKE2s(HMAC_LEN, ecbkey);
+				let blakehmac = new BLAKE2s(HMAC_LEN, gEcbKey);
 				blakehmac.update(hmacarr);
 				let hmac = blakehmac.digest();
 
@@ -425,14 +459,11 @@ onmessage = function (e) {
 					channel: btoa(bfEcb.encrypt(channel)),
 					message: newarr
 				};
-				let cbor;
-				try {
-					cbor = CBOR.encode(obj);
-				} catch (err) {
+				let encodedMsg = msgEncode(obj);
+				if(!encodedMsg)
 					break;
-				}
 				try {
-					webSocket.send(cbor);
+					gWebSocket.send(encodedMsg);
 				} catch (err) {
 					break;
 				}
@@ -444,7 +475,7 @@ onmessage = function (e) {
 				//let uid = e.data[2];
 				//let channel = e.data[3];
 				//let isEncryptedChannel = e.data[4];
-				webSocket.close();
+				gWebSocket.close();
 			}
 			break;
 	}
