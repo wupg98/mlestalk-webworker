@@ -3,7 +3,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
- * Copyright (c) 2019 MlesTalk WebWorker developers
+ * Copyright (c) 2019-2020 MlesTalk WebWorker developers
  */
 
 importScripts('cbor.js', 'blake2s.js', 'blowfish.js');
@@ -13,7 +13,7 @@ let gMyAddr;
 let gMyPort;
 let gMyUid;
 let gMyChannel;
-let gEcbKey;
+let gChannelKey;
 const SCATTERSIZE = 15;
 const ISFULL = 0x8000
 const ISIMAGE = 0x4000;
@@ -201,7 +201,7 @@ function processOnMessageData(msg) {
 	let hmacarr = new Uint8Array(noncem.byteLength + arr.byteLength);
 	hmacarr.set(noncem, 0);
 	hmacarr.set(arr, noncem.byteLength);
-	let blakehmac = new BLAKE2s(HMAC_LEN, gEcbKey);
+	let blakehmac = new BLAKE2s(HMAC_LEN, gChannelKey);
 	blakehmac.update(hmacarr);
 	let rhmac = blakehmac.digest();
 	if (false == isEqualHmacs(hmac, rhmac)) {
@@ -211,19 +211,19 @@ function processOnMessageData(msg) {
 	let nonce = u8arr2nonce(noncem);
 	let iv = nonce.slice(0, 2);
 
-	let uid = bfEcb.trimZeros(bfEcb.decrypt(atob(msg.uid)));
-	let channel = bfEcb.trimZeros(bfEcb.decrypt(atob(msg.channel)));
-	let decrypted = bfCbc.decrypt(message, iv);
+	let uid = gChanCrypt.trimZeros(gChanCrypt.decrypt(atob(msg.uid)));
+	let channel = gChanCrypt.trimZeros(gChanCrypt.decrypt(atob(msg.channel)));
+	let decrypted = gMsgCrypt.decrypt(message, iv);
 
 	if (decrypted.length < 16) {
 		return;
 	}
 
 	let timestring = decrypted.slice(0, 8);
-	let rarray = bfCbc.split64by32(timestring);
+	let rarray = gMsgCrypt.split64by32(timestring);
 	let timeU15 = unscatterTime(rarray[0], rarray[1]);
 	let weekstring = decrypted.slice(8, 16);
-	let warray = bfCbc.split64by32(weekstring);
+	let warray = gMsgCrypt.split64by32(weekstring);
 	let weekU15 = unscatterTime(warray[0], warray[1]);
 	let msgDate = readTimestamp(timeU15 & ~(ISFULL | ISIMAGE), weekU15 & ~(ISMULTI | ISFIRST | ISLAST));
 	message = decrypted.slice(16, decrypted.byteLength);
@@ -266,14 +266,14 @@ function msgEncode(obj) {
 
 function processOnClose() {
 	gWebSocket.close();
-	let uid = bfEcb.trimZeros(bfEcb.decrypt(atob(gMyUid)));
-	let channel = bfEcb.trimZeros(bfEcb.decrypt(atob(gMyChannel)));
+	let uid = gChanCrypt.trimZeros(gChanCrypt.decrypt(atob(gMyUid)));
+	let channel = gChanCrypt.trimZeros(gChanCrypt.decrypt(atob(gMyChannel)));
 	postMessage(["close", uid, channel, gMyUid, gMyChannel]);
 }
 
 function processOnOpen() {
-	let uid = bfEcb.trimZeros(bfEcb.decrypt(atob(gMyUid)));
-	let channel = bfEcb.trimZeros(bfEcb.decrypt(atob(gMyChannel)));
+	let uid = gChanCrypt.trimZeros(gChanCrypt.decrypt(atob(gMyUid)));
+	let channel = gChanCrypt.trimZeros(gChanCrypt.decrypt(atob(gMyChannel)));
 	postMessage(["init", uid, channel, gMyUid, gMyChannel]);
 }
 
@@ -312,6 +312,44 @@ function openSocket(gMyPort, gMyAddr, uid, channel) {
 	};
 }
 
+function createChannelKey(passwd) {
+	let round = new BLAKE2s(32, passwd);
+	let blakecb = new BLAKE2s(7); //56-bits max key len
+	blakecb.update(round.digest());
+	return blakecb.digest();
+}
+
+function createChannelAontKey(passwd) {
+	let round = new BLAKE2s(32, passwd);
+	round.update(passwd);
+	let blakeaontecb = new BLAKE2s(8); //aont key len
+	blakeaontecb.update(round.digest());
+	return blakeaontecb.digest();
+}
+
+function createMessageKey(passwd) {
+	let blakecbc = new BLAKE2s(7); //56-bits max key len
+	blakecbc.update(passwd);
+	return blakecbc.digest();
+}
+
+function createMessageAontKey(passwd) {
+	round = new BLAKE2s(32, passwd);
+	round.update(passwd);
+	round.update(passwd);
+	let blakeaontcbc = new BLAKE2s(8); //aont key len
+	blakeaontcbc.update(round.digest());
+	return blakeaontcbc.digest();
+}
+
+function createChannelCrypt(channelKey, channelAontKey) {
+	return new Blowfish(channelKey, channelAontKey);
+}
+
+function createMessageCrypt(messageKey, messageAontKey) {
+	return new Blowfish(messageKey, messageAontKey, "cbc");
+}
+
 onmessage = function (e) {
 	let cmd = e.data[0];
 	let data = e.data[1];
@@ -323,44 +361,24 @@ onmessage = function (e) {
 				gMyPort = e.data[3];
 				let uid = e.data[4];
 				let channel = e.data[5];
-				let fullkey = StringToUint8(e.data[6]);
+				let passwd = StringToUint8(e.data[6]);
 				let isEncryptedChannel = e.data[7];
 
+				let gChannelKey = createChannelKey(passwd);
+				let channelAontKey = createChannelAontKey(passwd);
+				let messageKey = createMessageKey(passwd);
+				let messageAontKey = createMessageAontKey(passwd)
 
-				let round = new BLAKE2s(32, fullkey);
+				//wipe unused
+				passwd = "";
 
-				let blakecb = new BLAKE2s(7); //56-bits max key len
-				blakecb.update(round.digest());
-				let gEcbKey = blakecb.digest();
-
-				round = new BLAKE2s(32, fullkey);
-				round.update(fullkey);
-				let blakeaontecb = new BLAKE2s(8); //aont key len
-				blakeaontecb.update(round.digest());
-				let ecbaontkey = blakeaontecb.digest();
-
-				let blakecbc = new BLAKE2s(7); //56-bits max key len
-				blakecbc.update(fullkey);
-				let cbckey = blakecbc.digest();
-
-				round = new BLAKE2s(32, fullkey);
-				round.update(fullkey);
-				round.update(fullkey);
-
-				//drop unused
-				fullkey = "";
-
-				let blakeaontcbc = new BLAKE2s(8); //aont key len
-				blakeaontcbc.update(round.digest());
-				let cbcaontkey = blakeaontcbc.digest();
-
-				bfEcb = new Blowfish(gEcbKey, ecbaontkey);
-				bfCbc = new Blowfish(cbckey, cbcaontkey, "cbc");
-				gMyUid = btoa(bfEcb.encrypt(uid));
+				gChanCrypt = createChannelCrypt(gChannelKey, channelAontKey);	
+				gMsgCrypt = createMessageCrypt(messageKey, messageAontKey);
+				gMyUid = btoa(gChanCrypt.encrypt(uid));
 
 				let bfchannel;
 				if (!isEncryptedChannel) {
-					bfchannel = bfEcb.encrypt(channel);
+					bfchannel = gChanCrypt.encrypt(channel);
 					gMyChannel = btoa(bfchannel);
 				}
 				else {
@@ -375,9 +393,9 @@ onmessage = function (e) {
 				let channel = e.data[3];
 				let isEncryptedChannel = e.data[4];
 
-				uid = btoa(bfEcb.encrypt(uid));
+				uid = btoa(gChanCrypt.encrypt(uid));
 				if (!isEncryptedChannel) {
-					bfchannel = bfEcb.encrypt(channel);
+					bfchannel = gChanCrypt.encrypt(channel);
 					channel = btoa(bfchannel);
 				}
 				// verify that we have already opened the channel earlier
@@ -410,7 +428,7 @@ onmessage = function (e) {
 				let rarray = randarr.slice(4);
 
 				if (isEncryptedChannel) {
-					channel = bfEcb.trimZeros(bfEcb.decrypt(atob(channel)));
+					channel = gChanCrypt.trimZeros(gChanCrypt.decrypt(atob(channel)));
 				}
 
 				let weekstamp = createWeekstamp(valueofdate);
@@ -435,9 +453,9 @@ onmessage = function (e) {
 				sval = scatterTime(rarray[2], rarray[3], weekstamp);
 				rarray[3] = sval;
 
-				let newmessage = bfCbc.num2block32(rarray[0]) + bfCbc.num2block32(rarray[1]) +
-					bfCbc.num2block32(rarray[2]) + bfCbc.num2block32(rarray[3]) + data;
-				let encrypted = bfCbc.encrypt(newmessage, iv);
+				let newmessage = gMsgCrypt.num2block32(rarray[0]) + gMsgCrypt.num2block32(rarray[1]) +
+					gMsgCrypt.num2block32(rarray[2]) + gMsgCrypt.num2block32(rarray[3]) + data;
+				let encrypted = gMsgCrypt.encrypt(newmessage, iv);
 				let noncearr = nonce2u8arr(nonce);
 				let arr = StringToUint8(encrypted);
 
@@ -446,7 +464,7 @@ onmessage = function (e) {
 				hmacarr.set(noncearr, 0);
 				hmacarr.set(arr, noncearr.byteLength);
 
-				let blakehmac = new BLAKE2s(HMAC_LEN, gEcbKey);
+				let blakehmac = new BLAKE2s(HMAC_LEN, gChannelKey);
 				blakehmac.update(hmacarr);
 				let hmac = blakehmac.digest();
 
@@ -455,8 +473,8 @@ onmessage = function (e) {
 				newarr.set(arr, noncearr.byteLength);
 				newarr.set(hmac, noncearr.byteLength + arr.byteLength);
 				let obj = {
-					uid: btoa(bfEcb.encrypt(uid)),
-					channel: btoa(bfEcb.encrypt(channel)),
+					uid: btoa(gChanCrypt.encrypt(uid)),
+					channel: btoa(gChanCrypt.encrypt(channel)),
 					message: newarr
 				};
 				let encodedMsg = msgEncode(obj);
