@@ -334,7 +334,7 @@ function createMessageKey(passwd) {
 }
 
 function createMessageAontKey(passwd) {
-	round = new BLAKE2s(32, passwd);
+	let round = new BLAKE2s(32, passwd);
 	round.update(passwd);
 	round.update(passwd);
 	let blakeaontcbc = new BLAKE2s(8); //aont key len
@@ -369,12 +369,15 @@ onmessage = function (e) {
 				let messageKey = createMessageKey(passwd);
 				let messageAontKey = createMessageAontKey(passwd)
 
-				//wipe unused
-				passwd = "";
-
 				gChanCrypt = createChannelCrypt(gChannelKey, channelAontKey);	
 				gMsgCrypt = createMessageCrypt(messageKey, messageAontKey);
 				gMyUid = btoa(gChanCrypt.encrypt(uid));
+
+				//wipe unused
+				passwd = "";
+				channelAontKey = "";
+				messageKey = "";
+				messageAontKey = "";
 
 				let bfchannel;
 				if (!isEncryptedChannel) {
