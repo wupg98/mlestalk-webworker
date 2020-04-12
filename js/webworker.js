@@ -284,7 +284,7 @@ function openSocket(gMyPort, gMyAddr, uid, channel) {
 
 	gWebSocket = new WebSocket("wss://" + gMyAddr + ":" + gMyPort
 		+ "?myname=" + uid
-		+ "&gMyChannel=" + channel, "mles-websocket");
+		+ "&mychannel=" + channel, "mles-websocket");
 	gWebSocket.binaryType = "arraybuffer";
 	gWebSocket.onopen = function (event) {
 		let ret = processOnOpen();
