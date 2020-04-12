@@ -277,7 +277,7 @@ function processOnOpen() {
 	postMessage(["init", uid, channel, gMyUid, gMyChannel]);
 }
 
-function openSocket(gMyPort, gMyAddr, uid, channel) {
+function openSocket(gMyPort, gMyAddr) {
 	if (gWebSocket !== undefined && gWebSocket.readyState == WebSocket.OPEN) {
 		return;
 	}
@@ -385,7 +385,7 @@ onmessage = function (e) {
 				else {
 					gMyChannel = channel;
 				}
-				openSocket(gMyPort, gMyAddr, gMyUid, gMyChannel);
+				openSocket(gMyPort, gMyAddr);
 			}
 			break;
 		case "reconnect":
@@ -401,7 +401,7 @@ onmessage = function (e) {
 				}
 				// verify that we have already opened the channel earlier
 				if (gMyUid === uid && gMyChannel === channel) {
-					openSocket(gMyPort, gMyAddr, gMyUid, gMyChannel);
+					openSocket(gMyPort, gMyAddr);
 				}
 			}
 			break;
