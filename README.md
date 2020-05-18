@@ -55,6 +55,14 @@ Please see https://mles.io for details about Mles protocol.
  ```
 ### Send message
 ```
+/* Message type flags */
+const MSGISFULL =       0x1;
+const MSGISPRESENCE =  (0x1 << 1);
+const MSGISIMAGE =     (0x1 << 2);
+const MSGISMULTIPART = (0x1 << 3);
+const MSGISFIRST =     (0x1 << 4);
+const MSGISLAST =      (0x1 << 5);
+
 /**
  * Send message over Mles WebSocket connection
  *
@@ -64,14 +72,10 @@ Please see https://mles.io for details about Mles protocol.
  * @param  channel {String}           IN: Mles Channel
  * @param  isEncryptedChannel {bool}  IN: true, if the channel is already in encrypted form
  * @param  randArray {Uint32Array}    IN: random array filled with input of length 8 x Uint32
- * @param  isFull {bool}              IN: true, if a full message
- * @param  isImage {bool}             IN: true, if an image
- * @param  isMultipart {bool}         IN: true, if multipart send
- * @param  isFirst {bool}             IN: true, if first of multipart send
- * @param  isLast {bool}              IN: true, if last of multipart send
+ * @param  msgtype                    IN: message type flags in a single variable
  * @param  valueOfDate {Date}         IN: send time as Date
  */
- webWorker.postMessage[("send", data, uid, channel,  isEncryptedChannel, randarr, isFull, isImage, isMultipart, isFirst, isLast, valueOfDate)]
+ webWorker.postMessage[("send", data, uid, channel,  isEncryptedChannel, randarr, msgtype, valueOfDate)]
  ```
 ### Send message receive
 ```
@@ -83,7 +87,7 @@ Please see https://mles.io for details about Mles protocol.
  * @param  channel {String}           OUT: Original Mles Channel
  * @param  isMultipart {boo           OUT: true, if send was multipart
  */
- webWorker.onmessage = e.data["send", uid, channel,  isMultipart]
+ webWorker.onmessage = e.data["send", uid, channel, isMultipart]
 ``` 
 ### Data message receive
 ```
@@ -95,13 +99,9 @@ Please see https://mles.io for details about Mles protocol.
  * @param  channel {String}            OUT: Original Mles Channel
  * @param  msgTimestamp {Date.valueOf} OUT: timestamp of the message in X format
  * @param  message {String}            OUT: received message
- * @param  isFull {bool}               OUT: true, if a full message
- * @param  isImage {bool}              OUT: true, if an image
- * @param  isMultipart {bool}          OUT: true, if multipart
- * @param  isFirst {bool}              OUT: true, if first of multipart
- * @param  isLast {bool}               OUT: true, if last of multipart
+ * @param  msgtype                     OUT: message type flags in a single variable
  */
- webWorker.onmessage = e.data["data", uid, channel, msgTimestamp, message, isFull, isImage, isMultipart, isFirst, isLast]
+ webWorker.onmessage = e.data["data", uid, channel, msgTimestamp, message, msgtype]
 ```
 ### Close message
 ```
