@@ -17,12 +17,21 @@ let gChannelKey;
 const SCATTERSIZE = 15;
 const ISFULL = 0x8000
 const ISIMAGE = 0x4000;
+const ISPRESENCE = 0x8000;
 const ISMULTI = 0x4000;
 const ISFIRST = 0x2000;
 const ISLAST = 0x1000;
 const BEGIN = new Date(Date.UTC(2018, 0, 1, 0, 0, 0));
 const HMAC_LEN = 12;
 const NONCE_LEN = 16;
+
+/* Msg type flags */
+const MSGISFULL =       0x1;
+const MSGISPRESENCE =  (0x1 << 1);
+const MSGISIMAGE =     (0x1 << 2);
+const MSGISMULTIPART = (0x1 << 3);
+const MSGISFIRST =     (0x1 << 4);
+const MSGISLAST =      (0x1 << 5);
 
 function scatterTime(rvalU32, valU32, timeU15) {
 	//check first which bits to use
@@ -225,27 +234,24 @@ function processOnMessageData(msg) {
 	let weekstring = decrypted.slice(8, 16);
 	let warray = gMsgCrypt.split64by32(weekstring);
 	let weekU15 = unscatterTime(warray[0], warray[1]);
-	let msgDate = readTimestamp(timeU15 & ~(ISFULL | ISIMAGE), weekU15 & ~(ISMULTI | ISFIRST | ISLAST));
+	let msgDate = readTimestamp(timeU15 & ~(ISFULL | ISIMAGE), weekU15 & ~(ISPRESENCE | ISMULTI | ISFIRST | ISLAST));
 	message = decrypted.slice(16, decrypted.byteLength);
 
-	let isFull = false;
-	let isImage = false;
-	let isMultipart = false;
-	let isFirst = false;
-	let isLast = false;
-	if (timeU15 & ISFULL) {
-		isFull = true;
-	}
+	let msgtype = 0;
+	if (timeU15 & ISFULL)
+		msgtype |= MSGISFULL;
 	if (timeU15 & ISIMAGE)
-		isImage = true;
+		msgtype |= MSGISIMAGE;
+	if (weekU15 & ISPRESENCE)
+		msgtype |= MSGISPRESENCE;
 	if (weekU15 & ISMULTI)
-		isMultipart = true;
+		msgtype |= MSGISMULTIPART;
 	if (weekU15 & ISFIRST)
-		isFirst = true;
+		msgtype |= MSGISFIRST;
 	if (weekU15 & ISLAST)
-		isLast = true;
+		msgtype |= MSGISLAST;
 
-	postMessage(["data", uid, channel, msgDate.valueOf(), message, isFull, isImage, isMultipart, isFirst, isLast]);
+	postMessage(["data", uid, channel, msgDate.valueOf(), message, msgtype]);
 }
 
 function msgDecode(data) {
@@ -417,12 +423,8 @@ onmessage = function (e) {
 					break;
 				}
 
-				let isFull = e.data[6];
-				let isImage = e.data[7];
-				let isMultipart = e.data[8];
-				let isFirst = e.data[9];
-				let isLast = e.data[10];
-				let valueofdate = e.data[11];
+				let msgtype = e.data[6];
+				let valueofdate = e.data[7];
 
 				let iv = randarr.slice(0, 2);
 				let nonce = randarr.slice(0, 4);
@@ -434,18 +436,21 @@ onmessage = function (e) {
 
 				let weekstamp = createWeekstamp(valueofdate);
 				let timestamp = createTimestamp(valueofdate, weekstamp);
-				if (isFull) {
+				if (msgtype & MSGISFULL) {
 					timestamp |= ISFULL;
 				}
-				if (isImage) {
+				if (msgtype & MSGISIMAGE) {
 					timestamp |= ISIMAGE;
 				}
-				if (isMultipart) {
+				if (msgtype & MSGISPRESENCE) {
+					weekstamp |= ISPRESENCE;
+				}
+				if (msgtype & MSGISMULTIPART) {
 					weekstamp |= ISMULTI;
-					if (isFirst) {
+					if (msgtype & MSGISFIRST) {
 						weekstamp |= ISFIRST;
 					}
-					if (isLast) {
+					if (msgtype & MSGISLAST) {
 						weekstamp |= ISLAST;
 					}
 				}
@@ -486,7 +491,7 @@ onmessage = function (e) {
 				} catch (err) {
 					break;
 				}
-				postMessage(["send", uid, channel, isMultipart]);
+				postMessage(["send", uid, channel, msgtype & MSGISMULTIPART ? true : false]);
 			}
 			break;
 		case "close":
