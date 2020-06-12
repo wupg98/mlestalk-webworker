@@ -6,7 +6,7 @@ Messages using MlesTalk WebWorker are sent on Transport Layer Security (TLS) [1]
 
 Message data sent is obfuscated end-to-end using symmetrical Blowfish (56-bit, weak key) [2] with CTS [3] + AONT [4] and Blake2 [5] HMAC. While not plain text, please do note that this obfuscation does not protect from serious message opening efforts.
 
-If the Mles Websocket session is connected to [arki-server](https://github.com/jq-rs/arki-server) proxy, it will forward the traffic to Mles server transforming it to AES and vice versa.
+If the Mles Websocket session is connected to [mles-webproxy](https://github.com/jq-rs/mles-webproxy) proxy, it will forward the traffic to Mles server transforming it to AES and vice versa.
 
 Please see https://mles.io for details about Mles protocol.
 
