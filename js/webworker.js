@@ -6,7 +6,7 @@
  * Copyright (c) 2019-2020 MlesTalk WebWorker developers
  */
 
-importScripts('cbor.js', 'blake2s.js', 'blowfish.js');
+importScripts('cbor.js', 'blake2s.js', 'blowfish.js', 'scrypt-async.js');
 
 let gWebSocket;
 let gMyAddr;
@@ -32,6 +32,12 @@ const MSGISIMAGE =     (0x1 << 2);
 const MSGISMULTIPART = (0x1 << 3);
 const MSGISFIRST =     (0x1 << 4);
 const MSGISLAST =      (0x1 << 5);
+
+const SCRYPT_SALTLEN = 32;
+const SCRYPT_N = 32768;
+const SCRYPT_R = 8;
+const SCRYPT_P = 2;
+const SCRYPT_DKLEN = 32;
 
 function scatterTime(rvalU32, valU32, timeU15) {
 	//check first which bits to use
@@ -368,6 +374,21 @@ onmessage = function (e) {
 				let passwd = StringToUint8(e.data[6]);
 				let isEncryptedChannel = e.data[7];
 
+				//salt
+				let salt = new BLAKE2s(SCRYPT_SALTLEN, passwd);
+				salt.update(StringToUint8('salty-mlestalk'));
+
+				//scrypt
+				scrypt(passwd, salt.digest(), {
+					N: SCRYPT_N,
+					r: SCRYPT_R,
+					p: SCRYPT_P,
+					dkLen: SCRYPT_DKLEN,
+					encoding: 'binary'
+				}, function(derivedKey) {
+					passwd = derivedKey;
+				});
+
 				let gChannelKey = createChannelKey(passwd);
 				let channelAontKey = createChannelAontKey(passwd);
 				let messageKey = createMessageKey(passwd);
@@ -378,6 +399,7 @@ onmessage = function (e) {
 				gMyUid = btoa(gChanCrypt.encrypt(uid));
 
 				//wipe unused
+				salt = "";
 				passwd = "";
 				channelAontKey = "";
 				messageKey = "";
