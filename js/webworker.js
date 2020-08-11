@@ -36,7 +36,7 @@ const MSGISLAST =      (0x1 << 5);
 const SCRYPT_SALTLEN = 32;
 const SCRYPT_N = 32768;
 const SCRYPT_R = 8;
-const SCRYPT_P = 2;
+const SCRYPT_P = 1;
 const SCRYPT_DKLEN = 32;
 
 function scatterTime(rvalU32, valU32, timeU15) {
