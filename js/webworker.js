@@ -259,7 +259,7 @@ function processBd(uid, msgtype, message) {
 		//console.log("Got " + uid + " public+bd key, len " + message.length);
 		let init = false;
 
-		if (message.length == 64 || message.length == 65 || message.length == 128) {
+		if (message.length == 64) {
 			if (!(msgtype & MSGISPRESENCEACK)) {
 				msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
 			}
@@ -421,6 +421,7 @@ function processBd(uid, msgtype, message) {
 			}
 		}
 	}
+	return msgtype;
 }
 
 function processOnMessageData(msg) {
@@ -531,7 +532,7 @@ function processOnMessageData(msg) {
 
 	if(keysz > 0) {
 		const keystr = decrypted.slice(msgsz, msgsz+keysz);
-		processBd(uid, msgtype, keystr);
+		msgtype = processBd(uid, msgtype, keystr);
 	}
 
 	postMessage(["data", uid, channel, msgDate.valueOf(), message, msgtype, fsEnabled]);
