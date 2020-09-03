@@ -254,6 +254,7 @@ function processBd(uid, msgtype, message) {
 	const myuid = gChanCrypt.trimZeros(gChanCrypt.decrypt(atob(gMyUid)));
 	if(uid == myuid) {  //received own message, init due to resyncing
 		initDhBd(myuid);
+		init = true;
 	}
 	else if (message.length == 64 || message.length == 65 || message.length == 66 || message.length == 128 || message.length == 129) {
 		//console.log("Got " + uid + " public+bd key, len " + message.length);
@@ -263,11 +264,9 @@ function processBd(uid, msgtype, message) {
 			if (!(msgtype & MSGISPRESENCEACK)) {
 				msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
 			}
-			if (gMyDhKey.secretAcked) {
-				//console.log("!!! skey invalidated in short message !!!");
-				initDhBd(myuid);
-				init = true;
-			}
+			//console.log("!!! skey invalidated in short message !!!");
+			initBd(myuid);
+			init = true;
 		}
 
 		let pub = buf2bn(StringToUint8(message.substring(0, 64)));
@@ -333,11 +332,17 @@ function processBd(uid, msgtype, message) {
 					//start again
 					initBd(myuid);
 					//console.log("!!! skey invalidated in mismatching bd !!!");
+					gDhDb[uid] = pub;
 					init = true;
+
 				}
 				else if (pubcnt > 2 && bd == BigInt(1) || pubcnt == 2 && bd != BigInt(1)) {
-					initBd(myuid);
+					initDhBd(myuid);
 					//console.log("!!! skey invalidated in mismatching bd length!!! pubcnt " + pubcnt + " bd " + bd.toString(16));
+					gDhDb[uid] = pub;
+					if (!(msgtype & MSGISPRESENCEACK)) {
+						msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
+					}
 					init = true;
 				}
 				else if (gBdDb[uid] == bd) {
@@ -902,7 +907,7 @@ onmessage = function (e) {
 					data += pub;
 				}
 				//add BD key, if it exists
-				if (gMyDhKey.bd) {
+				if (gMyDhKey.bd && !(msgtype & MSGISPRESENCEACK)) {
 					let bd = Uint8ToString(bn2buf(gMyDhKey.bd));
 					keysz += bd.length;
 					data += bd;
@@ -919,8 +924,6 @@ onmessage = function (e) {
 						}
 					}
 				}
-
-
 
 				//version and msg size
 				let hval = scatterU16(rarray[0], rarray[1], msgsz);
