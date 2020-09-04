@@ -954,7 +954,7 @@ onmessage = function (e) {
 				let crypt;
 				let channel_key;
 				if(gMyDhKey.bdMsgCrypt && gMyDhKey.secret && gMyDhKey.secretAcked) {
-					if(!(msgtype & MSGISPRESENCE) && !gMyDhKey.fsInformed) {
+					if(!gMyDhKey.fsInformed) {
 						processOnForwardSecrecy(gMyDhKey.secret);
 						gMyDhKey.fsInformed = true;
 					}
