@@ -250,6 +250,11 @@ function initDhBd(myuid) {
 	gMyDhKey.bdMsgCrypt = null;
 }
 
+function initPrevDhBd(myuid) {
+	gMyDhKey.prevBdChannelKey = null;
+	gMyDhKey.prevBdMsgCrypt = null;
+}
+
 function processBd(uid, msgtype, message) {
 	const myuid = gChanCrypt.trimZeros(gChanCrypt.decrypt(atob(gMyUid)));
 	if(uid == myuid) {  //received own message, init due to resyncing
@@ -264,9 +269,8 @@ function processBd(uid, msgtype, message) {
 			if (!(msgtype & MSGISPRESENCEACK)) {
 				msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
 			}
-			//console.log("!!! skey invalidated in short message !!!");
+			//console.log("!!! bd invalidated in short message !!!");
 			initBd(myuid);
-			init = true;
 		}
 
 		let pub = buf2bn(StringToUint8(message.substring(0, 64)));
@@ -457,6 +461,7 @@ function processOnMessageData(msg) {
 		if (true == isEqualHmacs(hmac, rhmac)) {
 			hmacok = true;
 			crypt = gMyDhKey.bdMsgCrypt;
+			//console.log("Current crypt matches");
 			fsEnabled = true;
 		}
 	}
@@ -468,6 +473,7 @@ function processOnMessageData(msg) {
 		if (true == isEqualHmacs(hmac, rhmac)) {
 			hmacok = true;
 			crypt = gMyDhKey.prevBdMsgCrypt;
+			//console.log("Prev crypt matches");
 			fsEnabled = true;
 		}
 	}
@@ -674,9 +680,10 @@ function isPrime(candidate) {
 }
 
 function getDhPrime(bits, passwd) {
-	let rounds = 0;
 	let sprime = 0;
 
+	//let rounds = 0;
+	//console.time("getDhPrime");
 	if(bits <= 0 || bits % 512 || bits > 4096)
 		throw new RangeError("Invalid key bits" + bits);
 
@@ -712,8 +719,12 @@ function getDhPrime(bits, passwd) {
 			//sprime = BigInt(2)*qprime-BigInt(1);
 			//aPrime = isPrime(sprime);
 		}
-		rounds++;
-	} 
+		//rounds++;
+		//if(0 == rounds % 100)
+		//	console.log("Rounds: " + rounds);
+	}
+	//console.log("Total rounds: " + rounds);
+	//console.timeEnd("getDhPrime");
 	return sprime;
 }
 
@@ -749,9 +760,10 @@ function buf2bn(buf) {
 }
 
 const MAXRND = 0x3ff;
-/* Padmé: https://lbarman.ch/blog/padme/ with random component */
-function padme(msgsize, rnd) {
-	const L = msgsize + (rnd & ~msgsize & MAXRND);
+/* Padmé: https://lbarman.ch/blog/padme/ */
+function padme(msgsize) {
+	//const L = msgsize + (rnd & ~msgsize & MAXRND); //with random
+	const L = msgsize;
 	const E = Math.floor(Math.log2(L));
 	const S = Math.floor(Math.log2(E))+1;
 	const lastBits = E-S;
@@ -863,7 +875,7 @@ onmessage = function (e) {
 				let valueofdate = e.data[6];
 				let keysz = 0;
 
-				let randarr = new Uint32Array(13);
+				let randarr = new Uint32Array(12);
 				self.crypto.getRandomValues(randarr);
 
 				let iv = randarr.slice(0, 2);
@@ -965,7 +977,7 @@ onmessage = function (e) {
 
 				const msglen = msgsz + keysz;
 				//padmé padding
-				const padsz = padme(msglen, rarray[8]) - msglen;
+				const padsz = padme(msglen) - msglen;
 				//console.log("TX: Msgsize " + msgsz + " padding sz " + padsz + " keysz " + keysz)
 				if(padsz > 0) {
 					newmessage += Uint8ToString(randBytesSync(padsz));
@@ -1010,10 +1022,12 @@ onmessage = function (e) {
 			break;
 		case "close":
 			{
-				//let uid = e.data[2];
+				let uid = e.data[2];
 				//let channel = e.data[3];
 				//let isEncryptedChannel = e.data[4];
 				gWebSocket.close();
+				initDhBd(uid);
+				initPrevDhBd(uid);
 			}
 			break;
 	}
