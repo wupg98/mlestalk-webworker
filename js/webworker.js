@@ -962,6 +962,10 @@ onmessage = function (e) {
 					channel_key = gMyDhKey.bdChannelKey;
 				}
 				else {
+					if(gMyDhKey.fsInformed) {
+						processOnForwardSecrecyOff();
+						gMyDhKey.fsInformed = false;
+					}
 					crypt = gMsgCrypt;
 					channel_key = gChannelKey;
 				}
