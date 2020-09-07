@@ -236,6 +236,10 @@ function initBd(myuid) {
 	gMyDhKey.secret = BigInt(0);
 	gMyDhKey.secretAcked = false;
 	gMyDhKey.bdMsgCrypt = null;
+	if (gMyDhKey.fsInformed) {
+		processOnForwardSecrecyOff();
+		gMyDhKey.fsInformed = false;
+	}
 }
 
 function initDhBd(myuid) {
@@ -248,6 +252,10 @@ function initDhBd(myuid) {
 	gMyDhKey.secret = BigInt(0);
 	gMyDhKey.secretAcked = false;
 	gMyDhKey.bdMsgCrypt = null;
+	if (gMyDhKey.fsInformed) {
+		processOnForwardSecrecyOff();
+		gMyDhKey.fsInformed = false;
+	}
 }
 
 function initPrevDhBd(myuid) {
@@ -255,6 +263,7 @@ function initPrevDhBd(myuid) {
 	gMyDhKey.prevBdMsgCrypt = null;
 }
 
+const BDDEBUG = false;
 function processBd(uid, msgtype, message) {
 	const myuid = gChanCrypt.trimZeros(gChanCrypt.decrypt(atob(gMyUid)));
 	if(uid == myuid) {  //received own message, init due to resyncing
@@ -262,14 +271,16 @@ function processBd(uid, msgtype, message) {
 		init = true;
 	}
 	else if (message.length == 64 || message.length == 65 || message.length == 66 || message.length == 128 || message.length == 129) {
-		//console.log("Got " + uid + " public+bd key, len " + message.length);
+		if(BDDEBUG)
+			console.log("Got " + uid + " public+bd key, len " + message.length);
 		let init = false;
 
 		if (message.length == 64) {
 			if (!(msgtype & MSGISPRESENCEACK)) {
 				msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
 			}
-			//console.log("!!! bd invalidated in short message !!!");
+			if(BDDEBUG)
+				console.log("!!! bd invalidated in short message !!!");
 			initBd(myuid);
 		}
 
@@ -279,13 +290,15 @@ function processBd(uid, msgtype, message) {
 		}
 		else if (gDhDb[uid] != pub) {
 			initDhBd(myuid);
-			//console.log("!!! skey invalidated in mismatching dh!!!");
+			if(BDDEBUG)
+				console.log("!!! skey invalidated in mismatching dh!!!");
 			gDhDb[uid] = pub;
 			init = true;
 		}
 		else if (message.length == 64 && gDhDb[uid] && gBdDb[uid]) {
 			initDhBd(myuid);
-			//console.log("!!! skey invalidated in short message as with existing bd!!!");
+			if(BDDEBUG)
+				console.log("!!! skey invalidated in short message as with existing bd!!!");
 			gDhDb[uid] = pub;
 			init = true;
 		}
@@ -335,14 +348,16 @@ function processBd(uid, msgtype, message) {
 				if (gBdDb[uid] != null && gBdDb[uid] != bd) {
 					//start again
 					initBd(myuid);
-					//console.log("!!! skey invalidated in mismatching bd !!!");
+					if(BDDEBUG)
+						console.log("!!! skey invalidated in mismatching bd !!!");
 					gDhDb[uid] = pub;
 					init = true;
 
 				}
 				else if (pubcnt > 2 && bd == BigInt(1) || pubcnt == 2 && bd != BigInt(1)) {
 					initDhBd(myuid);
-					//console.log("!!! skey invalidated in mismatching bd length!!! pubcnt " + pubcnt + " bd " + bd.toString(16));
+					if(BDDEBUG)
+						console.log("!!! skey invalidated in mismatching bd length!!! pubcnt " + pubcnt + " bd " + bd.toString(16));
 					gDhDb[uid] = pub;
 					if (!(msgtype & MSGISPRESENCEACK)) {
 						msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
@@ -422,7 +437,8 @@ function processBd(uid, msgtype, message) {
 						else {
 							//start again
 							initDhBd(myuid);
-							//console.log("!!! bds invalidated in ack !!!");
+							if(BDDEBUG)
+								console.log("!!! bds invalidated in ack !!!");
 							gDhDb[uid] = pub;
 						}
 					}
@@ -484,10 +500,6 @@ function processOnMessageData(msg) {
 		let rhmac = blakehmac.digest();
 		if (false == isEqualHmacs(hmac, rhmac)) {
 			return;
-		}
-		if(gMyDhKey.fsInformed) {
-			processOnForwardSecrecyOff();
-			gMyDhKey.fsInformed = false;
 		}
 		crypt = gMsgCrypt;
 	}
@@ -867,6 +879,7 @@ onmessage = function (e) {
 			}
 			break;
 		case "send":
+		case "resend_prev":
 			{
 				let uid = e.data[2];
 				let channel = e.data[3];
@@ -909,32 +922,57 @@ onmessage = function (e) {
 						weekstamp |= ISLAST;
 					}
 				}
-
 				const msgsz = data.length + HDRLEN;
-
-				//add public key, if it exists
-				if (gMyDhKey.public) {
-					let pub = Uint8ToString(bn2buf(gMyDhKey.public));
-					keysz += pub.length;
-					data += pub;
-				}
-				//add BD key, if it exists
-				if (gMyDhKey.bd && !(msgtype & MSGISPRESENCEACK)) {
-					let bd = Uint8ToString(bn2buf(gMyDhKey.bd));
-					keysz += bd.length;
-					data += bd;
-					let pubcnt = Object.keys(gDhDb).length;
-					let bdcnt = Object.keys(gBdDb).length;
-					//console.log("During send pubcnt " + pubcnt + " bdcnt " + bdcnt)
-					if (pubcnt == bdcnt && gMyDhKey.secret != BigInt(0)) {
-						let bd = Uint8ToString(bn2buf(BigInt(1)));
+				let newmessage;
+				let encrypted;
+				let crypt;
+				let channel_key;
+				if(cmd == "send") {
+					//add public key, if it exists
+					if (gMyDhKey.public) {
+						let pub = Uint8ToString(bn2buf(gMyDhKey.public));
+						keysz += pub.length;
+						data += pub;
+					}
+					//add BD key, if it exists
+					if (gMyDhKey.bd && !(msgtype & MSGISPRESENCEACK)) {
+						let bd = Uint8ToString(bn2buf(gMyDhKey.bd));
 						keysz += bd.length;
 						data += bd;
-						if (gBdAckDb[uid] == null) {
-							//console.log("Adding self to bdack db");
-							gBdAckDb[uid] = true;
+						let pubcnt = Object.keys(gDhDb).length;
+						let bdcnt = Object.keys(gBdDb).length;
+						//console.log("During send pubcnt " + pubcnt + " bdcnt " + bdcnt)
+						if (pubcnt == bdcnt && gMyDhKey.secret != BigInt(0)) {
+							let bd = Uint8ToString(bn2buf(BigInt(1)));
+							keysz += bd.length;
+							data += bd;
+							if (gBdAckDb[uid] == null) {
+								//console.log("Adding self to bdack db");
+								gBdAckDb[uid] = true;
+							}
 						}
 					}
+					if (gMyDhKey.bdMsgCrypt && gMyDhKey.secret && gMyDhKey.secretAcked) {
+						if (!gMyDhKey.fsInformed) {
+							processOnForwardSecrecy(gMyDhKey.secret);
+							gMyDhKey.fsInformed = true;
+						}
+						crypt = gMyDhKey.bdMsgCrypt;
+						channel_key = gMyDhKey.bdChannelKey;
+					}
+					else {
+						crypt = gMsgCrypt;
+						channel_key = gChannelKey;
+					}
+				}
+				else if (gMyDhKey.prevBdMsgCrypt && gMyDhKey.prevBdChannelKey) { //resend_prev
+					crypt = gMyDhKey.prevBdMsgCrypt;
+					channel_key = gMyDhKey.prevBdChannelKey;
+				}
+
+				if(!crypt || !channel_key) {
+					//ignore msg
+					break;
 				}
 
 				//version and msg size
@@ -948,27 +986,6 @@ onmessage = function (e) {
 				rarray[5] = sval;
 				sval = scatterU16(rarray[6], rarray[7], weekstamp);
 				rarray[7] = sval;
-
-				let newmessage;
-				let encrypted;
-				let crypt;
-				let channel_key;
-				if(gMyDhKey.bdMsgCrypt && gMyDhKey.secret && gMyDhKey.secretAcked) {
-					if(!gMyDhKey.fsInformed) {
-						processOnForwardSecrecy(gMyDhKey.secret);
-						gMyDhKey.fsInformed = true;
-					}
-					crypt = gMyDhKey.bdMsgCrypt;
-					channel_key = gMyDhKey.bdChannelKey;
-				}
-				else {
-					if(gMyDhKey.fsInformed) {
-						processOnForwardSecrecyOff();
-						gMyDhKey.fsInformed = false;
-					}
-					crypt = gMsgCrypt;
-					channel_key = gChannelKey;
-				}
 
 				//version, size and key values
 				newmessage = crypt.num2block32(rarray[0]) + crypt.num2block32(rarray[1]) +
@@ -1020,8 +1037,6 @@ onmessage = function (e) {
 					break;
 				}
 				postMessage(["send", uid, channel, msgtype & MSGISMULTIPART ? true : false]);
-
-
 			}
 			break;
 		case "close":
