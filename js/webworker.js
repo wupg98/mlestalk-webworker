@@ -829,6 +829,7 @@ onmessage = function (e) {
 					rnd.update(gChannelKey);
 					rnd.update(StringToUint8(prevBdKey));
 
+					//console.log("Setting prev channel key and crypt");
 					gMyDhKey.prevBdChannelKey = createChannelKey(rnd.digest());
 					let key = createMessageKey(rnd.digest());
 					let aontkey = createMessageAontKey(rnd.digest());
@@ -866,6 +867,26 @@ onmessage = function (e) {
 				let uid = e.data[2];
 				let channel = e.data[3];
 				let isEncryptedChannel = e.data[4];
+				let prevBdKey = e.data[5];
+
+				let private = new Uint8Array(DH_BITS/8);
+				self.crypto.getRandomValues(private);
+
+				gMyDhKey.private = buf2bn(private);
+				gMyDhKey.public = modPow(gMyDhKey.generator, gMyDhKey.private, gMyDhKey.prime);
+				if(prevBdKey) {
+					let rnd = new BLAKE2s(32);
+					rnd.update(gChannelKey);
+					rnd.update(StringToUint8(prevBdKey));
+
+					//console.log("Setting prev channel key and crypt in reconnect");
+					gMyDhKey.prevBdChannelKey = createChannelKey(rnd.digest());
+					let key = createMessageKey(rnd.digest());
+					let aontkey = createMessageAontKey(rnd.digest());
+					gMyDhKey.prevBdMsgCrypt = createMessageCrypt(key, aontkey);
+				}
+				//update database
+				initDhBd(uid);
 
 				uid = btoa(gChanCrypt.encrypt(uid));
 				if (!isEncryptedChannel) {
@@ -901,6 +922,7 @@ onmessage = function (e) {
 
 				let weekstamp = createWeekstamp(valueofdate);
 				let timestamp = createTimestamp(valueofdate, weekstamp);
+
 				if (msgtype & MSGISFULL)
 					timestamp |= ISFULL;
 
