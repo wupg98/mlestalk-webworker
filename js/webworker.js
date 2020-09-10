@@ -992,7 +992,7 @@ onmessage = function (e) {
 				let encrypted;
 				let crypt;
 				let channel_key;
-				let padsz = 0;
+				let padlen = 0;
 				if(cmd == "send") {
 					//add public key, if it exists
 					if (gMyDhKey.public) {
@@ -1004,7 +1004,7 @@ onmessage = function (e) {
 					if (gMyDhKey.bd && !(msgtype & MSGISPRESENCEACK)) {
 						if(gMyDhKey.bd == BigInt(1)) {
 							flagstamp |= ISBDONE;
-							padsz += DH_BITS/8;
+							padlen += DH_BITS/8;
 						}
 						else {
 							let bd = Uint8ToString(bn2buf(gMyDhKey.bd));
@@ -1021,6 +1021,9 @@ onmessage = function (e) {
 								gBdAckDb[uid] = true;
 							}
 						}
+					}
+					else {
+						padlen += DH_BITS/8;
 					}
 					if (gMyDhKey.bdMsgCrypt && gMyDhKey.secret && gMyDhKey.secretAcked) {
 						if (!gMyDhKey.fsInformed) {
@@ -1071,7 +1074,7 @@ onmessage = function (e) {
 
 				const msglen = msgsz + keysz;
 				//padmé padding
-				padsz += padme(msglen) - msglen;
+				const padsz = padme(msglen + padlen) - msglen;
 				//console.log("TX: Msgsize " + msgsz + " padding sz " + padsz + " keysz " + keysz)
 				if(padsz > 0) {
 					newmessage += Uint8ToString(randBytesSync(padsz));
