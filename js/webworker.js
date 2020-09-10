@@ -20,16 +20,19 @@ let gMsgCrypt;
 const SCATTERSIZE = 15;
 const ISFULL = 0x8000
 const ISIMAGE = 0x4000;
-const ISPRESENCE = 0x8000;
-const ISPRESENCEACK = 0x4000; 
-const ISMULTI = 0x4000; //reuse multi
-const ISFIRST = 0x2000;
-const ISLAST = 0x1000;
+const ISPRESENCE = 0x2000;
+const ISPRESENCEACK = 0x1000;
+const ISMULTI = 0x800;
+const ISFIRST = 0x400;
+const ISLAST = 0x200;
+const ISBDONE = 0x100;
+const ISBDACK = 0x80;
+const ALLISSET = 0X7F;
 const BEGIN = new Date(Date.UTC(2018, 0, 1, 0, 0, 0));
 const HMAC_LEN = 12;
-const NONCE_LEN = 16;
+const NONCE_LEN = 32;
 
-const HDRLEN = 32;
+const HDRLEN = 40;
 
 /* Msg type flags */
 const MSGISFULL =         0x1;
@@ -40,6 +43,8 @@ const MSGISFIRST =       (0x1 << 4);
 const MSGISLAST =        (0x1 << 5);
 const MSGISPRESENCEACK = (0x1 << 6);
 const MSGPRESACKREQ =    (0x1 << 7);
+const MSGISBDONE =       (0x1 << 8);
+const MSGISBDACK =		 (0x1 << 9);
 
 const SCRYPT_SALTLEN = 32;
 const SCRYPT_N = 32768;
@@ -132,6 +137,13 @@ function unscatterU16(rvalU32, svalU32) {
 	return valU16[0];
 }
 
+function createFlagstamp(valueofdate, weekstamp, timestamp) {
+	let begin = BEGIN;
+	let this_time = new Date(begin.valueOf() + weekstamp * 1000 * 60 * 60 * 24 * 7 + timestamp * 1000 * 60);
+	let flagstamp = parseInt((valueofdate - this_time) / 1000);
+	return flagstamp;
+}
+
 function createTimestamp(valueofdate, weekstamp) {
 	let begin = BEGIN;
 	let this_week = new Date(begin.valueOf() + weekstamp * 1000 * 60 * 60 * 24 * 7);
@@ -146,10 +158,10 @@ function createWeekstamp(valueofdate) {
 	return weekstamp;
 }
 
-function readTimestamp(timestamp, weekstamp) {
+function readTimestamp(timestamp, weekstamp, flagstamp) {
 	let begin = BEGIN;
 	let weeks = new Date(begin.valueOf() + weekstamp * 1000 * 60 * 60 * 24 * 7);
-	let extension = timestamp * 1000 * 60;
+	let extension = timestamp * 1000 * 60 + flagstamp * 1000;
 	let time = new Date(weeks.valueOf() + extension);
 	return time;
 }
@@ -190,13 +202,35 @@ function nonce2u8arr(nonce) {
 	nonceu8[13] = nonce[3] >> 16 & 0xff;
 	nonceu8[14] = nonce[3] >> 8 & 0xff;
 	nonceu8[15] = nonce[3] & 0xff;
+	nonceu8[16] = nonce[4] >> 24;
+	nonceu8[17] = nonce[4] >> 16 & 0xff;
+	nonceu8[18] = nonce[4] >> 8 & 0xff;
+	nonceu8[19] = nonce[4] & 0xff;
+	nonceu8[20] = nonce[5] >> 24;
+	nonceu8[21] = nonce[5] >> 16 & 0xff;
+	nonceu8[22] = nonce[5] >> 8 & 0xff;
+	nonceu8[23] = nonce[5] & 0xff;
+	nonceu8[24] = nonce[6] >> 24;
+	nonceu8[25] = nonce[6] >> 16 & 0xff;
+	nonceu8[26] = nonce[6] >> 8 & 0xff;
+	nonceu8[27] = nonce[6] & 0xff;
+	nonceu8[28] = nonce[7] >> 24;
+	nonceu8[29] = nonce[7] >> 16 & 0xff;
+	nonceu8[30] = nonce[7] >> 8 & 0xff;
+	nonceu8[31] = nonce[7] & 0xff;
 	return nonceu8;
 }
 
 function u8arr2nonce(noncem) {
-	let nonce = new Uint32Array(4);
+	let nonce = new Uint32Array(NONCE_LEN/4);
 	nonce[0] = noncem[0] << 24 | noncem[1] << 16 | noncem[2] << 8 | noncem[3];
 	nonce[1] = noncem[4] << 24 | noncem[5] << 16 | noncem[6] << 8 | noncem[7];
+	nonce[2] = noncem[8] << 24 | noncem[9] << 16 | noncem[10] << 8 | noncem[11];
+	nonce[3] = noncem[12] << 24 | noncem[13] << 16 | noncem[14] << 8 | noncem[15];
+	nonce[4] = noncem[16] << 24 | noncem[17] << 16 | noncem[18] << 8 | noncem[19];
+	nonce[5] = noncem[20] << 24 | noncem[21] << 16 | noncem[22] << 8 | noncem[23];
+	nonce[6] = noncem[24] << 24 | noncem[25] << 16 | noncem[26] << 8 | noncem[27];
+	nonce[7] = noncem[28] << 24 | noncem[29] << 16 | noncem[30] << 8 | noncem[31];
 	return nonce;
 }
 
@@ -270,12 +304,12 @@ function processBd(uid, msgtype, message) {
 		initDhBd(myuid);
 		init = true;
 	}
-	else if (message.length == 64 || message.length == 65 || message.length == 66 || message.length == 128 || message.length == 129) {
+	else if (message.length == DH_BITS/8 || message.length == 2 * (DH_BITS/8)) {
 		if(BDDEBUG)
 			console.log("Got " + uid + " public+bd key, len " + message.length);
 		let init = false;
 
-		if (message.length == 64) {
+		if (message.length == DH_BITS/8 && !(msgtype & MSGISBDONE) && !(msgtype & MSGISBDACK)) {
 			if (!(msgtype & MSGISPRESENCEACK)) {
 				msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
 			}
@@ -284,7 +318,7 @@ function processBd(uid, msgtype, message) {
 			initBd(myuid);
 		}
 
-		let pub = buf2bn(StringToUint8(message.substring(0, 64)));
+		let pub = buf2bn(StringToUint8(message.substring(0, DH_BITS/8)));
 		if (null == gDhDb[uid]) {
 			gDhDb[uid] = pub;
 		}
@@ -295,7 +329,7 @@ function processBd(uid, msgtype, message) {
 			gDhDb[uid] = pub;
 			init = true;
 		}
-		else if (message.length == 64 && gDhDb[uid] && gBdDb[uid]) {
+		else if (message.length == DH_BITS/8 && !(msgtype & MSGISBDONE) && gDhDb[uid] && gBdDb[uid]) {
 			initDhBd(myuid);
 			if(BDDEBUG)
 				console.log("!!! skey invalidated in short message as with existing bd!!!");
@@ -337,13 +371,14 @@ function processBd(uid, msgtype, message) {
 				gBdDb[myuid] = gMyDhKey.bd;
 			}
 
-			if (message.length == 128 || message.length == 65 || message.length == 66 || message.length == 129) {
-				let len;
-				if (message.length >= 128)
-					len = 128;
-				else
-					len = 65;
-				let bd = buf2bn(StringToUint8(message.substring(64, len)));
+			if (message.length == 2 * (DH_BITS/8) || (message.length == DH_BITS/8 && msgtype & MSGISBDONE)) {
+				let bd = BigInt(1);
+				let len = 0;
+				if (message.length == 2 * (DH_BITS/8))
+					len = 2 * DH_BITS/8;
+
+				if(len)
+					bd = buf2bn(StringToUint8(message.substring(DH_BITS/8, len)));
 
 				if (gBdDb[uid] != null && gBdDb[uid] != bd) {
 					//start again
@@ -413,7 +448,7 @@ function processBd(uid, msgtype, message) {
 					}
 				}
 				//if bd handling fails, ignore large handling
-				if (!init && message.length == 66 || message.length == 129) {
+				if (!init && (message.length == DH_BITS/8 && msgtype & MSGISBDACK) || message.length == 2 * (DH_BITS/8)) {
 					if (gMyDhKey.secretAcked) {
 						//do nothing, already acked
 					}
@@ -427,8 +462,8 @@ function processBd(uid, msgtype, message) {
 							//ack received from everyone else?
 							//console.log("Ackcnt " + ackcnt + " pubcnt " + pubcnt + " bdcnt " + bdcnt);
 							if (pubcnt == bdcnt && ackcnt == pubcnt &&
-								(message.length == 66 && pubcnt == 2 ||
-									message.length == 129 && pubcnt > 2)) {
+								(message.length == DH_BITS/8 && msgtype & MSGISBDACK && msgtype & MSGISBDONE && pubcnt == 2 ||
+								 message.length == 2 * (DH_BITS/8) && msgtype & MSGISBDACK && pubcnt > 2)) {
 
 								//console.log("Ack count matches to pub&bdcnt, enabling send encryption!");
 								gMyDhKey.secretAcked = true;
@@ -529,29 +564,36 @@ function processOnMessageData(msg) {
 	let timestring = decrypted.slice(16, 24);
 	let rarray = crypt.split64by32(timestring);
 	let timeU16 = unscatterU16(rarray[0], rarray[1]);
-	let weekstring = decrypted.slice(24, HDRLEN);
+	let weekstring = decrypted.slice(24, 32);
 	let warray = crypt.split64by32(weekstring);
 	let weekU16 = unscatterU16(warray[0], warray[1]);
-	let msgDate = readTimestamp(timeU16 & ~(ISFULL | ISIMAGE), weekU16 & ~(ISPRESENCE | ISMULTI | ISFIRST | ISLAST));
+	let flagstring = decrypted.slice(32, HDRLEN);
+	let farray = crypt.split64by32(flagstring);
+	let flagU16 = unscatterU16(farray[0], farray[1]);
+
+	let msgDate = readTimestamp(timeU16, weekU16, flagU16 & ALLISSET);
 
 	message = decrypted.slice(HDRLEN, msgsz);
 
 	let msgtype = 0;
-	if (timeU16 & ISFULL)
+	if (flagU16 & ISFULL)
 		msgtype |= MSGISFULL;
-	if (timeU16 & ISIMAGE)
+	if (flagU16 & ISIMAGE)
 		msgtype |= MSGISIMAGE;
-	if (weekU16 & ISPRESENCE) {
+	if (flagU16 & ISPRESENCE)
 		msgtype |= MSGISPRESENCE;
-		if (weekU16 & ISPRESENCEACK)
-			msgtype |= MSGISPRESENCEACK;
-	}
-	if (!(weekU16 & ISPRESENCE) && weekU16 & ISMULTI)
+	if (flagU16 & ISPRESENCEACK)
+		msgtype |= MSGISPRESENCEACK;
+	if (flagU16 & ISMULTI)
 		msgtype |= MSGISMULTIPART;
-	if (weekU16 & ISFIRST)
+	if (flagU16 & ISFIRST)
 		msgtype |= MSGISFIRST;
-	if (weekU16 & ISLAST)
+	if (flagU16 & ISLAST)
 		msgtype |= MSGISLAST;
+	if (flagU16 & ISBDONE)
+		msgtype |= MSGISBDONE;
+	if (flagU16 & ISBDACK)
+		msgtype |= MSGISBDACK;
 
 	if(keysz > 0) {
 		const keystr = decrypted.slice(msgsz, msgsz+keysz);
@@ -783,6 +825,18 @@ function padme(msgsize) {
 	return (L + bitMask) & ~bitMask;
 }
 
+function createPrevBd(prevBdKey) {
+	let rnd = new BLAKE2s(32);
+	rnd.update(gChannelKey);
+	rnd.update(StringToUint8(prevBdKey));
+
+	//console.log("Setting prev channel key and crypt");
+	gMyDhKey.prevBdChannelKey = createChannelKey(rnd.digest());
+	let key = createMessageKey(rnd.digest());
+	let aontkey = createMessageAontKey(rnd.digest());
+	gMyDhKey.prevBdMsgCrypt = createMessageCrypt(key, aontkey);
+}
+
 onmessage = function (e) {
 	let cmd = e.data[0];
 	let data = e.data[1];
@@ -825,15 +879,7 @@ onmessage = function (e) {
 
 				gChannelKey = createChannelKey(passwd);
 				if(prevBdKey) {
-					let rnd = new BLAKE2s(32);
-					rnd.update(gChannelKey);
-					rnd.update(StringToUint8(prevBdKey));
-
-					//console.log("Setting prev channel key and crypt");
-					gMyDhKey.prevBdChannelKey = createChannelKey(rnd.digest());
-					let key = createMessageKey(rnd.digest());
-					let aontkey = createMessageAontKey(rnd.digest());
-					gMyDhKey.prevBdMsgCrypt = createMessageCrypt(key, aontkey);
+					createPrevBd(prevBdKey);
 				}
 
 				let channelAontKey = createChannelAontKey(passwd);
@@ -850,6 +896,7 @@ onmessage = function (e) {
 				channelAontKey = "";
 				messageKey = "";
 				messageAontKey = "";
+				prevBdKey = "";
 
 				let bfchannel;
 				if (!isEncryptedChannel) {
@@ -875,18 +922,13 @@ onmessage = function (e) {
 				gMyDhKey.private = buf2bn(private);
 				gMyDhKey.public = modPow(gMyDhKey.generator, gMyDhKey.private, gMyDhKey.prime);
 				if(prevBdKey) {
-					let rnd = new BLAKE2s(32);
-					rnd.update(gChannelKey);
-					rnd.update(StringToUint8(prevBdKey));
-
-					//console.log("Setting prev channel key and crypt in reconnect");
-					gMyDhKey.prevBdChannelKey = createChannelKey(rnd.digest());
-					let key = createMessageKey(rnd.digest());
-					let aontkey = createMessageAontKey(rnd.digest());
-					gMyDhKey.prevBdMsgCrypt = createMessageCrypt(key, aontkey);
+					createPrevBd(prevBdKey);
 				}
 				//update database
 				initDhBd(uid);
+
+				//wipe unused
+				prevBdKey = "";	
 
 				uid = btoa(gChanCrypt.encrypt(uid));
 				if (!isEncryptedChannel) {
@@ -909,12 +951,12 @@ onmessage = function (e) {
 				let valueofdate = e.data[6];
 				let keysz = 0;
 
-				let randarr = new Uint32Array(12);
+				let randarr = new Uint32Array(18);
 				self.crypto.getRandomValues(randarr);
 
 				let iv = randarr.slice(0, 2);
-				let nonce = randarr.slice(0, 4);
-				let rarray = randarr.slice(4);
+				let nonce = randarr.slice(0, 8);
+				let rarray = randarr.slice(8);
 
 				if (isEncryptedChannel) {
 					channel = gChanCrypt.trimZeros(gChanCrypt.decrypt(atob(channel)));
@@ -922,26 +964,27 @@ onmessage = function (e) {
 
 				let weekstamp = createWeekstamp(valueofdate);
 				let timestamp = createTimestamp(valueofdate, weekstamp);
+				let flagstamp = createFlagstamp(valueofdate, weekstamp, timestamp); //include seconds to flagstamp
 
 				if (msgtype & MSGISFULL)
-					timestamp |= ISFULL;
+					flagstamp |= ISFULL;
 
-				if (msgtype & MSGISIMAGE) {
-					timestamp |= ISIMAGE;
-				}
-				if (msgtype & MSGISPRESENCE) {
-					weekstamp |= ISPRESENCE;
-					if (msgtype & MSGISPRESENCEACK)
-						weekstamp |= ISPRESENCEACK;
-				}
+				if (msgtype & MSGISIMAGE)
+					flagstamp |= ISIMAGE;
 
-				if (!(msgtype & MSGISPRESENCE) && msgtype & MSGISMULTIPART) {
-					weekstamp |= ISMULTI;
+				if (msgtype & MSGISPRESENCE)
+					flagstamp |= ISPRESENCE;
+
+				if (msgtype & MSGISPRESENCEACK)
+					flagstamp |= ISPRESENCEACK;
+
+				if (msgtype & MSGISMULTIPART) {
+					flagstamp |= ISMULTI;
 					if (msgtype & MSGISFIRST) {
-						weekstamp |= ISFIRST;
+						flagstamp |= ISFIRST;
 					}
 					if (msgtype & MSGISLAST) {
-						weekstamp |= ISLAST;
+						flagstamp |= ISLAST;
 					}
 				}
 				const msgsz = data.length + HDRLEN;
@@ -949,6 +992,7 @@ onmessage = function (e) {
 				let encrypted;
 				let crypt;
 				let channel_key;
+				let padsz = 0;
 				if(cmd == "send") {
 					//add public key, if it exists
 					if (gMyDhKey.public) {
@@ -958,16 +1002,20 @@ onmessage = function (e) {
 					}
 					//add BD key, if it exists
 					if (gMyDhKey.bd && !(msgtype & MSGISPRESENCEACK)) {
-						let bd = Uint8ToString(bn2buf(gMyDhKey.bd));
-						keysz += bd.length;
-						data += bd;
+						if(gMyDhKey.bd == BigInt(1)) {
+							flagstamp |= ISBDONE;
+							padsz += DH_BITS/8;
+						}
+						else {
+							let bd = Uint8ToString(bn2buf(gMyDhKey.bd));
+							keysz += bd.length;
+							data += bd;
+						}
 						let pubcnt = Object.keys(gDhDb).length;
 						let bdcnt = Object.keys(gBdDb).length;
 						//console.log("During send pubcnt " + pubcnt + " bdcnt " + bdcnt)
 						if (pubcnt == bdcnt && gMyDhKey.secret != BigInt(0)) {
-							let bd = Uint8ToString(bn2buf(BigInt(1)));
-							keysz += bd.length;
-							data += bd;
+							flagstamp |= ISBDACK;
 							if (gBdAckDb[uid] == null) {
 								//console.log("Adding self to bdack db");
 								gBdAckDb[uid] = true;
@@ -1008,19 +1056,22 @@ onmessage = function (e) {
 				rarray[5] = sval;
 				sval = scatterU16(rarray[6], rarray[7], weekstamp);
 				rarray[7] = sval;
+				sval = scatterU16(rarray[8], rarray[9], flagstamp);
+				rarray[9] = sval;
 
 				//version, size and key values
 				newmessage = crypt.num2block32(rarray[0]) + crypt.num2block32(rarray[1]) +
 							crypt.num2block32(rarray[2]) + crypt.num2block32(rarray[3]);
 				//time values
 				newmessage += crypt.num2block32(rarray[4]) + crypt.num2block32(rarray[5]) +
-							crypt.num2block32(rarray[6]) + crypt.num2block32(rarray[7]);
+							crypt.num2block32(rarray[6]) + crypt.num2block32(rarray[7]) +
+							crypt.num2block32(rarray[8]) + crypt.num2block32(rarray[9])
 				//message itself
 				newmessage += data;
 
 				const msglen = msgsz + keysz;
 				//padmé padding
-				const padsz = padme(msglen) - msglen;
+				padsz += padme(msglen) - msglen;
 				//console.log("TX: Msgsize " + msgsz + " padding sz " + padsz + " keysz " + keysz)
 				if(padsz > 0) {
 					newmessage += Uint8ToString(randBytesSync(padsz));
