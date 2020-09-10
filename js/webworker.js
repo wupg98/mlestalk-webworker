@@ -505,7 +505,7 @@ function processOnMessageData(msg) {
 
 	//try all three options
 	if(gMyDhKey.bdMsgCrypt) {
-		let blakehmac = new BLAKE2s(HMAC_LEN);
+		let blakehmac = new BLAKE2s(HMAC_LEN, noncem.slice(2));
 		blakehmac.update(gMyDhKey.bdChannelKey);
 		blakehmac.update(hmacarr);
 		let rhmac = blakehmac.digest();
@@ -517,7 +517,7 @@ function processOnMessageData(msg) {
 		}
 	}
 	if(!hmacok && gMyDhKey.prevBdMsgCrypt) {
-		let blakehmac = new BLAKE2s(HMAC_LEN);
+		let blakehmac = new BLAKE2s(HMAC_LEN, noncem.slice(2));
 		blakehmac.update(gMyDhKey.prevBdChannelKey);
 		blakehmac.update(hmacarr);
 		let rhmac = blakehmac.digest();
@@ -529,7 +529,7 @@ function processOnMessageData(msg) {
 		}
 	}
 	if(!hmacok) {
-		let blakehmac = new BLAKE2s(HMAC_LEN)
+		let blakehmac = new BLAKE2s(HMAC_LEN, noncem.slice(2))
 		blakehmac.update(gChannelKey);
 		blakehmac.update(hmacarr);
 		let rhmac = blakehmac.digest();
@@ -1087,7 +1087,7 @@ onmessage = function (e) {
 				hmacarr.set(noncearr, 0);
 				hmacarr.set(arr, noncearr.byteLength);
 
-				let blakehmac = new BLAKE2s(HMAC_LEN);
+				let blakehmac = new BLAKE2s(HMAC_LEN, noncearr.slice(2));
 				blakehmac.update(channel_key);
 				blakehmac.update(hmacarr);
 				let hmac = blakehmac.digest();
