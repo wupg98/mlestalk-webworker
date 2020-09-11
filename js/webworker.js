@@ -649,9 +649,15 @@ function processOnForwardSecrecyOff() {
 	postMessage(["forwardsecrecyoff", uid, channel, gMyUid, gMyChannel]);
 }
 
+function isSocketOpen() {
+	if (gWebSocket !== undefined && gWebSocket.readyState == WebSocket.OPEN) {
+		return true;
+	}
+	return false;
+}
 
 function openSocket(gMyPort, gMyAddr) {
-	if (gWebSocket !== undefined && gWebSocket.readyState == WebSocket.OPEN) {
+	if (isSocketOpen()) {
 		return;
 	}
 
@@ -924,6 +930,10 @@ onmessage = function (e) {
 			break;
 		case "reconnect":
 			{
+				if(isSocketOpen()) { //do not reconnect if socket is already connected
+					break;
+				}
+
 				let uid = e.data[2];
 				let channel = e.data[3];
 				let isEncryptedChannel = e.data[4];
