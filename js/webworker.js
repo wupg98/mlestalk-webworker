@@ -31,6 +31,9 @@ const ALLISSET = 0X7F;
 const BEGIN = new Date(Date.UTC(2018, 0, 1, 0, 0, 0));
 const HMAC_LEN = 12;
 const NONCE_LEN = 32;
+const DOMAIN_ENCKEY = StringToUint8("Mles-WebWorkerEncryptDom!v1");
+const DOMAIN_CHANKEY = StringToUint8("Mles-WebWorkerChannelDom!v1");
+const DOMAIN_AUTHKEY = StringToUint8("Mles-WebWorkerAuthDom!v1");
 
 const HDRLEN = 40;
 
@@ -505,6 +508,7 @@ function processOnMessageData(msg) {
 	//try all three options
 	if(gMyDhKey.bdMsgCrypt) {
 		let blakehmac = new BLAKE2s(HMAC_LEN, gMyDhKey.bdChannelKey);
+		blakehmac.update(DOMAIN_AUTHKEY);
 		blakehmac.update(noncem.slice(2));
 		blakehmac.update(hmacarr);
 		let rhmac = blakehmac.digest();
@@ -517,6 +521,7 @@ function processOnMessageData(msg) {
 	}
 	if(!hmacok && gMyDhKey.prevBdMsgCrypt) {
 		let blakehmac = new BLAKE2s(HMAC_LEN, gMyDhKey.prevBdChannelKey);
+		blakehmac.update(DOMAIN_AUTHKEY);
 		blakehmac.update(noncem.slice(2));
 		blakehmac.update(hmacarr);
 		let rhmac = blakehmac.digest();
@@ -528,7 +533,8 @@ function processOnMessageData(msg) {
 		}
 	}
 	if(!hmacok) {
-		let blakehmac = new BLAKE2s(HMAC_LEN, gChannelKey)
+		let blakehmac = new BLAKE2s(HMAC_LEN, gChannelKey);
+		blakehmac.update(DOMAIN_AUTHKEY);
 		blakehmac.update(noncem.slice(2));
 		blakehmac.update(hmacarr);
 		let rhmac = blakehmac.digest();
@@ -681,7 +687,9 @@ function createChannelKey(key) {
 	if(key.length > 32)
 		throw new RangeError("Too large key " + key.length);
 	let round = new BLAKE2s(32, key);
+	round.update(DOMAIN_CHANKEY);
 	let blakecb = new BLAKE2s(7, key); //56-bits max key len
+	blakecb.update(DOMAIN_CHANKEY);
 	blakecb.update(round.digest());
 	return blakecb.digest();
 }
@@ -690,8 +698,10 @@ function createChannelAontKey(key) {
 	if(key.length > 32)
 		throw new RangeError("Too large key " + key.length);
 	let round = new BLAKE2s(32, key);
+	round.update(DOMAIN_CHANKEY);
 	round.update(key);
 	let blakeaontecb = new BLAKE2s(8, key); //aont key len
+	blakeaontecb.update(DOMAIN_CHANKEY);
 	blakeaontecb.update(round.digest());
 	return blakeaontecb.digest();
 }
@@ -700,6 +710,7 @@ function createMessageKey(key) {
 	if(key.length > 32)
 		throw new RangeError("Too large key " + key.length);
 	let blakecbc = new BLAKE2s(7, key); //56-bits max key len
+	blakecbc.update(DOMAIN_ENCKEY);
 	return blakecbc.digest();
 }
 
@@ -707,6 +718,7 @@ function createMessageAontKey(key) {
 	if(key.length > 32)
 		throw new RangeError("Too large key " + key.length);
 	let round = new BLAKE2s(32, key);
+	round.update(DOMAIN_ENCKEY);
 	round.update(key);
 	round.update(key);
 	let blakeaontcbc = new BLAKE2s(8, key); //aont key len
@@ -1092,6 +1104,7 @@ onmessage = function (e) {
 				hmacarr.set(arr, noncearr.byteLength);
 
 				let blakehmac = new BLAKE2s(HMAC_LEN, channel_key);
+				blakehmac.update(DOMAIN_AUTHKEY);
 				blakehmac.update(noncearr.slice(2));
 				blakehmac.update(hmacarr);
 				let hmac = blakehmac.digest();
