@@ -431,8 +431,7 @@ function processBd(uid, msgtype, message) {
 						//console.log("!!! My skey " + skey.toString(16) + " !!!");
 						gMyDhKey.secret = skey;
 
-						let rnd = new BLAKE2s(32);
-						rnd.update(gChannelKey);
+						let rnd = new BLAKE2s(32, gChannelKey);
 						rnd.update(StringToUint8(gMyDhKey.secret.toString(16)));
 
 						gMyDhKey.bdChannelKey = createChannelKey(rnd.digest());
@@ -678,35 +677,39 @@ function openSocket(gMyPort, gMyAddr) {
 	};
 }
 
-function createChannelKey(passwd) {
-	let round = new BLAKE2s(32);
-	round.update(passwd);
-	let blakecb = new BLAKE2s(7); //56-bits max key len
+function createChannelKey(key) {
+	if(key.length > 32)
+		throw new RangeError("Too large key " + key.length);
+	let round = new BLAKE2s(32, key);
+	let blakecb = new BLAKE2s(7, key); //56-bits max key len
 	blakecb.update(round.digest());
 	return blakecb.digest();
 }
 
-function createChannelAontKey(passwd) {
-	let round = new BLAKE2s(32);
-	round.update(passwd);
-	round.update(passwd);
-	let blakeaontecb = new BLAKE2s(8); //aont key len
+function createChannelAontKey(key) {
+	if(key.length > 32)
+		throw new RangeError("Too large key " + key.length);
+	let round = new BLAKE2s(32, key);
+	round.update(key);
+	let blakeaontecb = new BLAKE2s(8, key); //aont key len
 	blakeaontecb.update(round.digest());
 	return blakeaontecb.digest();
 }
 
-function createMessageKey(passwd) {
-	let blakecbc = new BLAKE2s(7); //56-bits max key len
-	blakecbc.update(passwd);
+function createMessageKey(key) {
+	if(key.length > 32)
+		throw new RangeError("Too large key " + key.length);
+	let blakecbc = new BLAKE2s(7, key); //56-bits max key len
 	return blakecbc.digest();
 }
 
-function createMessageAontKey(passwd) {
-	let round = new BLAKE2s(32);
-	round.update(passwd);
-	round.update(passwd);
-	round.update(passwd);
-	let blakeaontcbc = new BLAKE2s(8); //aont key len
+function createMessageAontKey(key) {
+	if(key.length > 32)
+		throw new RangeError("Too large key " + key.length);
+	let round = new BLAKE2s(32, key);
+	round.update(key);
+	round.update(key);
+	let blakeaontcbc = new BLAKE2s(8, key); //aont key len
 	blakeaontcbc.update(round.digest());
 	return blakeaontcbc.digest();
 }
@@ -733,7 +736,7 @@ function isPrime(candidate) {
 	return isPrime;
 }
 
-function getDhPrime(bits, passwd) {
+function getDhPrime(bits, key) {
 	let sprime = 0;
 
 	//let rounds = 0;
@@ -741,8 +744,7 @@ function getDhPrime(bits, passwd) {
 	if(bits <= 0 || bits % 512 || bits > 4096)
 		throw new RangeError("Invalid key bits" + bits);
 
-	let rnd = new BLAKE2s(32);
-	rnd.update(passwd);
+	let rnd = new BLAKE2s(32, key);
 	let seed = rnd.digest();
 	let dhhprime = new BLAKE2s(32, seed);
 	let dhlprime = new BLAKE2s(32, dhhprime.digest());
@@ -825,9 +827,8 @@ function padme(msgsize) {
 	return (L + bitMask) & ~bitMask;
 }
 
-function createPrevBd(prevBdKey) {
-	let rnd = new BLAKE2s(32);
-	rnd.update(gChannelKey);
+function createPrevBd(prevBdKey, channelKey) {
+	let rnd = new BLAKE2s(32, channelKey);
 	rnd.update(StringToUint8(prevBdKey));
 
 	//console.log("Setting prev channel key and crypt");
@@ -855,7 +856,7 @@ onmessage = function (e) {
 				//salt
 				let salt = new BLAKE2s(SCRYPT_SALTLEN);
 				salt.update(passwd);
-				salt.update(StringToUint8('salty-mlestalk'));
+				salt.update(StringToUint8('salty'));
 
 				//scrypt
 				scrypt(passwd, salt.digest(), {
@@ -879,7 +880,7 @@ onmessage = function (e) {
 
 				gChannelKey = createChannelKey(passwd);
 				if(prevBdKey) {
-					createPrevBd(prevBdKey);
+					createPrevBd(prevBdKey, gChannelKey);
 				}
 
 				let channelAontKey = createChannelAontKey(passwd);
@@ -922,7 +923,7 @@ onmessage = function (e) {
 				gMyDhKey.private = buf2bn(private);
 				gMyDhKey.public = modPow(gMyDhKey.generator, gMyDhKey.private, gMyDhKey.prime);
 				if(prevBdKey) {
-					createPrevBd(prevBdKey);
+					createPrevBd(prevBdKey, gChannelKey);
 				}
 				//update database
 				initDhBd(uid);
