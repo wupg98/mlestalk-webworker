@@ -930,9 +930,8 @@ onmessage = function (e) {
 				messageAontKey = "";
 				prevBdKey = "";
 
-				let bfchannel;
 				if (!isEncryptedChannel) {
-					bfchannel = gChanCrypt.encrypt(channel);
+					let bfchannel = gChanCrypt.encrypt(channel);
 					gMyChannel = btoa(bfchannel);
 				}
 				else {
@@ -950,25 +949,10 @@ onmessage = function (e) {
 				let uid = e.data[2];
 				let channel = e.data[3];
 				let isEncryptedChannel = e.data[4];
-				let prevBdKey = e.data[5];
-
-				let private = new Uint8Array(DH_BITS/8);
-				self.crypto.getRandomValues(private);
-
-				gMyDhKey.private = buf2bn(private);
-				gMyDhKey.public = modPow(gMyDhKey.generator, gMyDhKey.private, gMyDhKey.prime);
-				if(prevBdKey) {
-					createPrevBd(prevBdKey, gChannelKey);
-				}
-				//update database
-				initDhBd(uid);
-
-				//wipe unused
-				prevBdKey = "";	
 
 				uid = btoa(gChanCrypt.encrypt(uid));
 				if (!isEncryptedChannel) {
-					bfchannel = gChanCrypt.encrypt(channel);
+					let bfchannel = gChanCrypt.encrypt(channel);
 					channel = btoa(bfchannel);
 				}
 				// verify that we have already opened the channel earlier
@@ -982,25 +966,10 @@ onmessage = function (e) {
 				let uid = e.data[2];
 				let channel = e.data[3];
 				let isEncryptedChannel = e.data[4];
-				let prevBdKey = e.data[5];
-
-				let private = new Uint8Array(DH_BITS/8);
-				self.crypto.getRandomValues(private);
-
-				gMyDhKey.private = buf2bn(private);
-				gMyDhKey.public = modPow(gMyDhKey.generator, gMyDhKey.private, gMyDhKey.prime);
-				if(prevBdKey) {
-					createPrevBd(prevBdKey, gChannelKey);
-				}
-				//update database
-				initDhBd(uid);
-
-				//wipe unused
-				prevBdKey = "";	
 
 				uid = btoa(gChanCrypt.encrypt(uid));
 				if (!isEncryptedChannel) {
-					bfchannel = gChanCrypt.encrypt(channel);
+					let bfchannel = gChanCrypt.encrypt(channel);
 					channel = btoa(bfchannel);
 				}
 				// verify that we have already opened the channel earlier
