@@ -34,6 +34,7 @@ const NONCE_LEN = 32;
 const DOMAIN_ENCKEY = StringToUint8("Mles-WebWorkerEncryptDom!v1");
 const DOMAIN_CHANKEY = StringToUint8("Mles-WebWorkerChannelDom!v1");
 const DOMAIN_AUTHKEY = StringToUint8("Mles-WebWorkerAuthDom!v1");
+const RECREATE_TIMER = 1000;
 
 const HDRLEN = 40;
 
@@ -624,6 +625,10 @@ function msgEncode(obj) {
 	}
 }
 
+function sleep(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function processOnClose() {
 	gWebSocket.close();
 	let uid = gChanCrypt.trimZeros(gChanCrypt.decrypt(atob(gMyUid)));
@@ -631,10 +636,15 @@ function processOnClose() {
 	postMessage(["close", uid, channel, gMyUid, gMyChannel]);
 }
 
-function processOnOpen() {
+function processOnOpen(reopen) {
 	let uid = gChanCrypt.trimZeros(gChanCrypt.decrypt(atob(gMyUid)));
 	let channel = gChanCrypt.trimZeros(gChanCrypt.decrypt(atob(gMyChannel)));
-	postMessage(["init", uid, channel, gMyUid, gMyChannel]);
+	if(false == reopen) {
+		postMessage(["init", uid, channel, gMyUid, gMyChannel]);
+	}
+	else {
+		postMessage(["resync", uid, channel, gMyUid, gMyChannel]);
+	}
 }
 
 function processOnForwardSecrecy(bdKey) {
@@ -656,15 +666,18 @@ function isSocketOpen() {
 	return false;
 }
 
-function openSocket(gMyPort, gMyAddr) {
-	if (isSocketOpen()) {
+async function openSocket(gMyPort, gMyAddr, reopen = false) {
+	if (isSocketOpen() && false == reopen) {
 		return;
 	}
-
+	if (gWebSocket !== undefined) {
+		gWebSocket.close();
+		await sleep(RECREATE_TIMER);
+	}
 	gWebSocket = new WebSocket("wss://" + gMyAddr + ":" + gMyPort, "mles-websocket");
 	gWebSocket.binaryType = "arraybuffer";
 	gWebSocket.onopen = function (event) {
-		let ret = processOnOpen();
+		let ret = processOnOpen(reopen);
 		if(ret < 0)
 			console.log("Process on open failed: " + ret);
 
@@ -925,12 +938,12 @@ onmessage = function (e) {
 				else {
 					gMyChannel = channel;
 				}
-				openSocket(gMyPort, gMyAddr);
+				openSocket(gMyPort, gMyAddr, false);
 			}
 			break;
 		case "reconnect":
 			{
-				if(isSocketOpen()) { //do not reconnect if socket is already connected
+				if(isSocketOpen()) { //do not reconnect if socket is already connecte
 					break;
 				}
 
@@ -960,7 +973,39 @@ onmessage = function (e) {
 				}
 				// verify that we have already opened the channel earlier
 				if (gMyUid === uid && gMyChannel === channel) {
-					openSocket(gMyPort, gMyAddr);
+					openSocket(gMyPort, gMyAddr, true);
+				}
+			}
+			break;
+		case "resync": // force reconnect
+			{
+				let uid = e.data[2];
+				let channel = e.data[3];
+				let isEncryptedChannel = e.data[4];
+				let prevBdKey = e.data[5];
+
+				let private = new Uint8Array(DH_BITS/8);
+				self.crypto.getRandomValues(private);
+
+				gMyDhKey.private = buf2bn(private);
+				gMyDhKey.public = modPow(gMyDhKey.generator, gMyDhKey.private, gMyDhKey.prime);
+				if(prevBdKey) {
+					createPrevBd(prevBdKey, gChannelKey);
+				}
+				//update database
+				initDhBd(uid);
+
+				//wipe unused
+				prevBdKey = "";	
+
+				uid = btoa(gChanCrypt.encrypt(uid));
+				if (!isEncryptedChannel) {
+					bfchannel = gChanCrypt.encrypt(channel);
+					channel = btoa(bfchannel);
+				}
+				// verify that we have already opened the channel earlier
+				if (gMyUid === uid && gMyChannel === channel) {
+					openSocket(gMyPort, gMyAddr, true);
 				}
 			}
 			break;
