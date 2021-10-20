@@ -261,7 +261,7 @@ function initBd(channel, myuid) {
 	gMyDhKey[channel].secretAcked = false;
 	gMyDhKey[channel].bdMsgCrypt = null;
 	if (gMyDhKey[channel].fsInformed) {
-		processOnForwardSecrecyOff();
+		processOnForwardSecrecyOff(channel);
 		gMyDhKey[channel].fsInformed = false;
 	}
 }
@@ -277,7 +277,7 @@ function initDhBd(channel, myuid) {
 	gMyDhKey[channel].secretAcked = false;
 	gMyDhKey[channel].bdMsgCrypt = null;
 	if (gMyDhKey[channel].fsInformed) {
-		processOnForwardSecrecyOff();
+		processOnForwardSecrecyOff(channel);
 		gMyDhKey[channel].fsInformed = false;
 	}
 }
@@ -358,6 +358,7 @@ function processBd(channel, uid, msgtype, message) {
 			if (prevkey && nextkey) {
 				let bd = nextkey * modInv(prevkey, gMyDhKey[channel].prime) % gMyDhKey[channel].prime;
 				gMyDhKey[channel].bd = modPow(bd, gMyDhKey[channel].private, gMyDhKey[channel].prime);
+				gBdDb[channel] = {};
 				gBdDb[channel][myuid] = gMyDhKey[channel].bd;
 			}
 
@@ -444,6 +445,7 @@ function processBd(channel, uid, msgtype, message) {
 					else {
 						//check first that pub and bd are ok
 						if (gDhDb[channel][uid] && gBdDb[channel][uid]) {
+							gBdAckDb[channel] = {};
 							gBdAckDb[channel][uid] = true;
 							let pubcnt = Object.keys(gDhDb[channel]).length;
 							let bdcnt = Object.keys(gBdDb[channel]).length;
@@ -616,28 +618,28 @@ function sleep(ms) {
 
 function processOnClose(channel) {
 	gWebSocket[channel].close();
-	let uid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel][channel])));
-	postMessage(["close", uid, channel, gMyUid[channel][channel], gMyChannel[channel]]);
+	let uid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel])));
+	postMessage(["close", uid, channel]);
 }
 
 function processOnOpen(channel, reopen) {
 	let uid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel])));
 	if(false == reopen) {
-		postMessage(["init", uid, channel, gMyUid[channel], gMyChannel[channel]]);
+		postMessage(["init", uid, channel]);
 	}
 	else {
-		postMessage(["resync", uid, channel, gMyUid[channel], gMyChannel[channel]]);
+		postMessage(["resync", uid, channel]);
 	}
 }
 
 function processOnForwardSecrecy(channel, bdKey) {
 	let uid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel])));
-	postMessage(["forwardsecrecy", uid, channel, gMyUid[channel], gMyChannel[channel], bdKey.toString(16)]);
+	postMessage(["forwardsecrecy", uid, channel, bdKey.toString(16)]);
 }
 
 function processOnForwardSecrecyOff(channel) {
 	let uid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel])));
-	postMessage(["forwardsecrecyoff", uid, channel, gMyUid[channel], gMyChannel[channel]]);
+	postMessage(["forwardsecrecyoff", uid, channel]);
 }
 
 function isSocketOpen(channel) {
@@ -857,8 +859,8 @@ onmessage = function (e) {
 	switch (cmd) {
 		case "init":
 			{
-				gMyAddr = e.data[2];
-				gMyPort = e.data[3];
+				let addr = e.data[2];
+				let port = e.data[3];
 				let uid = e.data[4];
 				let channel = e.data[5];
 				let passwd = StringToUint8(e.data[6]);
@@ -877,6 +879,9 @@ onmessage = function (e) {
 	    				prevBdChannelKey: null,
 	    				fsInformed: false
 				};
+
+				gMyAddr[channel] = addr;
+				gMyPort[channel] = port;
 
 				//salt
 				let salt = new BLAKE2s(SCRYPT_SALTLEN);
@@ -906,7 +911,7 @@ onmessage = function (e) {
 
 				gChannelKey[channel] = createChannelKey(passwd);
 				if(prevBdKey) {
-					createPrevBd(prevBdKey, gChannelKey[channel]);
+					createPrevBd(channel, prevBdKey, gChannelKey[channel]);
 				}
 
 				let channelAontKey = createChannelAontKey(passwd);
@@ -926,7 +931,7 @@ onmessage = function (e) {
 				prevBdKey = "";
 
 				gMyChannel[channel] = channel;
-				openSocket(channel, gMyPort, gMyAddr, false);
+				openSocket(channel, gMyPort[channel], gMyAddr[channel], false);
 			}
 			break;
 		case "reconnect":
@@ -942,7 +947,7 @@ onmessage = function (e) {
 				uid = btoa(gChanCrypt[channel].encrypt(uid));
 				// verify that we have already opened the channel earlier
 				if (gMyUid[channel] === uid && gMyChannel[channel] === channel) {
-					openSocket(gMyPort, gMyAddr, true);
+					openSocket(channel, gMyPort[channel], gMyAddr[channel], false);
 				}
 			}
 			break;
@@ -954,7 +959,7 @@ onmessage = function (e) {
 				uid = btoa(gChanCrypt[channel].encrypt(uid));
 				// verify that we have already opened the channel earlier
 				if (gMyUid[channel] === uid && gMyChannel[channel] === channel) {
-					openSocket(gMyPort, gMyAddr, true);
+					openSocket(channel, gMyPort[channel], gMyAddr[channel], true);
 				}
 			}
 			break;
@@ -1039,7 +1044,7 @@ onmessage = function (e) {
 					}
 					if (gMyDhKey[channel].bdMsgCrypt && gMyDhKey[channel].secret && gMyDhKey[channel].secretAcked) {
 						if (!gMyDhKey[channel].fsInformed) {
-							processOnForwardSecrecy(gMyDhKey[channel].secret);
+							processOnForwardSecrecy(channel, gMyDhKey[channel].secret);
 							gMyDhKey[channel].fsInformed = true;
 						}
 						crypt = gMyDhKey[channel].bdMsgCrypt;
