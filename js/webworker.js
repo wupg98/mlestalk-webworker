@@ -358,7 +358,6 @@ function processBd(channel, uid, msgtype, message) {
 			if (prevkey && nextkey) {
 				let bd = nextkey * modInv(prevkey, gMyDhKey[channel].prime) % gMyDhKey[channel].prime;
 				gMyDhKey[channel].bd = modPow(bd, gMyDhKey[channel].private, gMyDhKey[channel].prime);
-				gBdDb[channel] = {};
 				gBdDb[channel][myuid] = gMyDhKey[channel].bd;
 			}
 
@@ -445,7 +444,6 @@ function processBd(channel, uid, msgtype, message) {
 					else {
 						//check first that pub and bd are ok
 						if (gDhDb[channel][uid] && gBdDb[channel][uid]) {
-							gBdAckDb[channel] = {};
 							gBdAckDb[channel][uid] = true;
 							let pubcnt = Object.keys(gDhDb[channel]).length;
 							let bdcnt = Object.keys(gBdDb[channel]).length;
