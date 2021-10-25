@@ -328,6 +328,8 @@ function processBd(channel, uid, msgtype, message) {
 		}
 		else if(!init) {
 			//calculate bd key
+			if(!gBdDb[channel])
+				gBdDb[channel] = {};
 			let prevkey = null;
 			let nextkey = null;
 			let index = 0;
@@ -442,6 +444,8 @@ function processBd(channel, uid, msgtype, message) {
 						//do nothing, already acked
 					}
 					else {
+						if(!gBdAckDb[channel])
+							gBdAckDb[channel] = {};
 						//check first that pub and bd are ok
 						if (gDhDb[channel][uid] && gBdDb[channel][uid]) {
 							gBdAckDb[channel][uid] = true;
