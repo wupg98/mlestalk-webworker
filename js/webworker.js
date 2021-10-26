@@ -627,7 +627,7 @@ function processOnClose(channel) {
 function processOnOpen(channel, reopen) {
 	let uid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel])));
 	if(false == reopen) {
-		postMessage(["init", uid, channel]);
+		postMessage(["init", uid, channel, gMyChannel[channel]]);
 	}
 	else {
 		postMessage(["resync", uid, channel]);
@@ -923,6 +923,7 @@ onmessage = function (e) {
 				gChanCrypt[channel] = createChannelCrypt(gChannelKey[channel], channelAontKey);	
 				gMsgCrypt[channel] = createMessageCrypt(messageKey, messageAontKey);
 				gMyUid[channel] = btoa(gChanCrypt[channel].encrypt(uid));
+				gMyChannel[channel] = btoa(gChanCrypt[channel].encrypt(channel));
 
 				//wipe unused
 				salt = "";
@@ -932,7 +933,6 @@ onmessage = function (e) {
 				messageAontKey = "";
 				prevBdKey = "";
 
-				gMyChannel[channel] = channel;
 				openSocket(channel, gMyPort[channel], gMyAddr[channel], false);
 			}
 			break;
@@ -946,9 +946,10 @@ onmessage = function (e) {
 					break;
 				}
 
-				uid = btoa(gChanCrypt[channel].encrypt(uid));
+				let myuid = btoa(gChanCrypt[channel].encrypt(uid));
+				let mychan = btoa(gChanCrypt[channel].encrypt(channel));
 				// verify that we have already opened the channel earlier
-				if (gMyUid[channel] === uid && gMyChannel[channel] === channel) {
+				if (gMyUid[channel] === myuid && gMyChannel[channel] === mychan) {
 					openSocket(channel, gMyPort[channel], gMyAddr[channel], false);
 				}
 			}
@@ -958,9 +959,10 @@ onmessage = function (e) {
 				let uid = e.data[2];
 				let channel = e.data[3];
 
-				uid = btoa(gChanCrypt[channel].encrypt(uid));
+				let myuid = btoa(gChanCrypt[channel].encrypt(uid));
+				let mychan = btoa(gChanCrypt[channel].encrypt(channel));
 				// verify that we have already opened the channel earlier
-				if (gMyUid[channel] === uid && gMyChannel[channel] === channel) {
+				if (gMyUid[channel] === myuid && gMyChannel[channel] === mychannel) {
 					openSocket(channel, gMyPort[channel], gMyAddr[channel], true);
 				}
 			}
