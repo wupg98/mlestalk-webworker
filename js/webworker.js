@@ -48,7 +48,7 @@ const MSGISLAST =        (0x1 << 5);
 const MSGISPRESENCEACK = (0x1 << 6);
 const MSGPRESACKREQ =    (0x1 << 7);
 const MSGISBDONE =       (0x1 << 8);
-const MSGISBDACK =		 (0x1 << 9);
+const MSGISBDACK =	 (0x1 << 9);
 
 const SCRYPT_SALTLEN = 32;
 const SCRYPT_N = 32768;
@@ -300,9 +300,10 @@ function processBd(channel, uid, msgtype, message) {
 		let init = false;
 
 		if (message.length == DH_BITS/8 && !(msgtype & MSGISBDONE) && !(msgtype & MSGISBDACK)) {
-			if (!(msgtype & MSGISPRESENCEACK)) {
-				msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
-			}
+			//ignore for now
+			//if (!(msgtype & MSGISPRESENCEACK)) {
+			//	msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
+			//}
 			if(BDDEBUG)
 				console.log("!!! bd invalidated in short message !!!");
 			initBd(channel, myuid);
