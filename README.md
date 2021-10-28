@@ -24,9 +24,8 @@ Please see https://mles.io for details about Mles protocol.
  * @param  uid {String}               IN: Mles User Id
  * @param  channel {String}           IN: Mles Channel
  * @param  key {String}               IN: Encryption key
- * @param  isEncryptedChannel {bool}  IN: true, if the channel is already in encrypted form
  */
- webWorker.postMessage[("init", data, addr, port, uid, channel, key, isEncryptedChannel)]
+ webWorker.postMessage[("init", data, addr, port, uid, channel, key)]
 ```
 ### Init/Reconnect message receive
 ```
@@ -36,10 +35,9 @@ Please see https://mles.io for details about Mles protocol.
  * @param  init {String}              OUT: command parameter of receive "init"
  * @param  uid {String}               OUT: Original Mles User Id
  * @param  channel {String}           OUT: Original Mles Channel
- * @param  myuid {String}             OUT: Encrypted Mles User Id for reference
  * @param  mychannel {String}         OUT: Encrypted Mles Channel for reference
  */
- webWorker.onmessage = e.data["init", uid, channel, myuid, mychannel]
+ webWorker.onmessage = e.data["init", uid, channel, mychannel]
 ```
 ### Reconnect message
 ```
@@ -70,7 +68,6 @@ const MSGISLAST =      (0x1 << 5);
  * @param  data {String}              IN: data to be sent
  * @param  uid {String}               IN: Mles User Id
  * @param  channel {String}           IN: Mles Channel
- * @param  isEncryptedChannel {bool}  IN: true, if the channel is already in encrypted form
  * @param  randArray {Uint32Array}    IN: random array filled with input of length 8 x Uint32
  * @param  msgtype                    IN: message type flags in a single variable
  * @param  valueOfDate {Date}         IN: send time as Date
@@ -123,10 +120,8 @@ const MSGISLAST =      (0x1 << 5);
  * @param  close {String}             OUT: command parameter of receive "close"
  * @param  uid {String}               OUT: Original Mles User Id
  * @param  channel {String}           OUT: Original Mles Channel
- * @param  myuid {String}             OUT: Encrypted Mles User Id for reference
- * @param  mychannel {String}         OUT: Encrypted Mles Channel for reference
  */
- webWorker.onmessage = e.data["close", uid, channel, myuid, mychannel]
+ webWorker.onmessage = e.data["close", uid, channel]
 ```
 
 ## References
