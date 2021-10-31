@@ -131,5 +131,5 @@ const MSGISLAST =      (0x1 << 5);
   3. Rogaway, Wooding & Zhang, 2012. The Security of Ciphertext Stealing.
   4. Rivest, 1997. All-or-nothing transform.
   5. Aumasson, Neves, Wilcox-O’Hearn & Winnerlein, 2013. BLAKE2: simpler, smaller, fast as MD5.
-  6. Kirill Nikitin, Ludovic Barman, Wouter Lueks, Matthew Underwood, Jean-Pierre Hubaux, Bryan Ford, 2019: Reducing Metadata Leakage from Encrypted Files and Communication with PURBs
+  6. Kirill Nikitin, Ludovic Barman, Wouter Lueks, Matthew Underwood, Jean-Pierre Hubaux, Bryan Ford, 2019. Reducing Metadata Leakage from Encrypted Files and Communication with PURBs
   7. Burmester, Desmedt, 1994. A secure and efficient conference key distribution system.
