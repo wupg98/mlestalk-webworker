@@ -4,7 +4,7 @@ MlesTalk WebWorker is an open source Mles (Modern Lightweight channEl Service) W
 
 Messages using MlesTalk WebWorker are sent on Transport Layer Security (TLS) [1] protected connection by default which should be secure.
 
-In addition to TLS encryption, message data is obfuscated end-to-end using symmetrical Blowfish (56-bit, weak key) [2] with CTS [3] + AONT [4] and Blake2 [5] HMAC. While not plain text, please do note that this obfuscation does not protect from serious message opening efforts.
+In addition to transport-level TLS encryption, message data is obfuscated end-to-end using symmetrical Blowfish (56-bit, weak key) [2] with ciphertext stealing (CTS) [3], all-or-nothing transform (AONT) [4], Blake2 [5] HMAC and Padmé padding [6]. The shared key is passed through the password-based key derivation function scrypt [7]. For longer real-time communication, an ephemeral Burmester-Desmedt (BD) [8] key is exchanged. When it is applied, it can be identified from a font colour change. While the message data is not plain text, please do note that this obfuscation does not protect from serious message opening efforts.
 
 If the Mles Websocket session is connected to [mles-webproxy](https://github.com/jq-rs/mles-webproxy), it will forward the traffic to Mles server transforming it to AES and vice versa.
 
@@ -131,3 +131,6 @@ const MSGISLAST =      (0x1 << 5);
   3. Rogaway, Wooding & Zhang, 2012. The Security of Ciphertext Stealing.
   4. Rivest, 1997. All-or-nothing transform.
   5. Aumasson, Neves, Wilcox-O’Hearn & Winnerlein, 2013. BLAKE2: simpler, smaller, fast as MD5.
+  6. Kirill Nikitin, Ludovic Barman, Wouter Lueks, Matthew Underwood, Jean-Pierre Hubaux, Bryan Ford, 2019. Reducing Metadata Leakage from Encrypted Files and Communication with PURBs
+  7. Colin Percival, 2009. Stronger key derivation via sequential memory-hard functions.
+  8. Burmester, Desmedt, 1994. A secure and efficient conference key distribution system.
