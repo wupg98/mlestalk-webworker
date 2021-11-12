@@ -35,6 +35,7 @@ const DOMAIN_ENCKEY = StringToUint8("Mles-WebWorkerEncryptDom!v1");
 const DOMAIN_CHANKEY = StringToUint8("Mles-WebWorkerChannelDom!v1");
 const DOMAIN_AUTHKEY = StringToUint8("Mles-WebWorkerAuthDom!v1");
 const RECREATE_TIMER = 1000;
+const KEYTIMEOUT = 60*5*1000;
 
 const HDRLEN = 40;
 
@@ -288,16 +289,20 @@ function initPrevDhBd(channel, myuid) {
 }
 
 const BDDEBUG = false;
-function processBd(channel, uid, msgtype, message) {
+function processBd(channel, uid, msgtype, timestamp, message) {
 	const myuid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel])));
-	if(uid == myuid) {  //received own message, init due to resyncing
+	const msgDate = parseInt(Date.now() / 1000) * 1000; //rounded to full seconds
+	if (uid != myuid && timestamp < msgDate.valueOf() - KEYTIMEOUT) {
 		initDhBd(channel, myuid);
-		init = true;
+	}
+	else if(uid == myuid) {  //received own message, init due to resyncing
+		initDhBd(channel, myuid);
 	}
 	else if (message.length == DH_BITS/8 || message.length == 2 * (DH_BITS/8)) {
+		let init = false;
+
 		if(BDDEBUG)
 			console.log("Got " + uid + " public+bd key, len " + message.length);
-		let init = false;
 
 		if (message.length == DH_BITS/8 && !(msgtype & MSGISBDONE) && !(msgtype & MSGISBDACK)) {
 			//ignore for now
@@ -593,7 +598,7 @@ function processOnMessageData(channel, msg) {
 
 	if(keysz > 0) {
 		const keystr = decrypted.slice(msgsz, msgsz+keysz);
-		msgtype = processBd(channel, uid, msgtype, keystr);
+		msgtype = processBd(channel, uid, msgtype, msgDate.valueOf(), keystr);
 	}
 
 	postMessage(["data", uid, channel, msgDate.valueOf(), message, msgtype, fsEnabled]);
