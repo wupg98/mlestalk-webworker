@@ -944,13 +944,28 @@ onmessage = function (e) {
 			break;
 		case "reconnect":
 			{
-
 				let uid = e.data[2];
 				let channel = e.data[3];
+                                let prevBdKey = e.data[4];
 
-				if(isSocketOpen(channel)) { //do not reconnect if socket is already connecte
+				if(isSocketOpen(channel)) { //do not reconnect if socket is already connected
 					break;
 				}
+ 
+                                let private = new Uint8Array(DH_BITS/8);
+                                self.crypto.getRandomValues(private);
+
+                                gMyDhKey[channel].private = buf2bn(private);
+                                gMyDhKey[channel].public = modPow(gMyDhKey[channel].generator, gMyDhKey[channel].private, gMyDhKey[channel].prime);
+                                if(prevBdKey) {
+                                        createPrevBd(channel, prevBdKey, gChannelKey[channel]);
+				}
+
+                                //update database
+                                initDhBd(channel, uid);
+
+                                //wipe unused
+                                prevBdKey = ""; 
 
 				let myuid = btoa(gChanCrypt[channel].encrypt(uid));
 				let mychan = btoa(gChanCrypt[channel].encrypt(channel));
@@ -964,6 +979,22 @@ onmessage = function (e) {
 			{
 				let uid = e.data[2];
 				let channel = e.data[3];
+                                let prevBdKey = e.data[4];
+
+                                let private = new Uint8Array(DH_BITS/8);
+                                self.crypto.getRandomValues(private);
+
+                                gMyDhKey[channel].private = buf2bn(private);
+                                gMyDhKey[channel].public = modPow(gMyDhKey[channel].generator, gMyDhKey[channel].private, gMyDhKey[channel].prime);
+                                if(prevBdKey) {
+                                        createPrevBd(channel, prevBdKey, gChannelKey[channel]);
+				}
+
+                                //update database
+                                initDhBd(channel, uid);
+
+                                //wipe unused
+                                prevBdKey = ""; 
 
 				let myuid = btoa(gChanCrypt[channel].encrypt(uid));
 				let mychan = btoa(gChanCrypt[channel].encrypt(channel));
