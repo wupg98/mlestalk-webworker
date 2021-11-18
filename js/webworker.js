@@ -304,11 +304,10 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 		if(BDDEBUG)
 			console.log("Got " + uid + " public+bd key, len " + message.length);
 
-		if (message.length == DH_BITS/8 && !(msgtype & MSGISBDONE) && !(msgtype & MSGISBDACK)) {
-			//ignore for now
-			//if (!(msgtype & MSGISPRESENCEACK)) {
-			//	msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
-			//}
+		if (message.length == DH_BITS/8 && (msgtype & MSGISPRESENCE) && 0 == (msgtype & MSGISBDONE) && 0 == (msgtype & MSGISBDACK)) {
+			if (0 == (msgtype & MSGISPRESENCEACK)) {
+				msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
+			}
 			if(BDDEBUG)
 				console.log("!!! bd invalidated in short message !!!");
 			initBd(channel, myuid);
@@ -392,7 +391,7 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 					if(BDDEBUG)
 						console.log("!!! skey invalidated in mismatching bd length!!! pubcnt " + pubcnt + " bd " + bd.toString(16));
 					gDhDb[channel][uid] = pub;
-					if (!(msgtype & MSGISPRESENCEACK)) {
+					if ((msgtype & MSGISPRESENCE) && 0 == (msgtype & MSGISPRESENCEACK)) {
 						msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
 					}
 					init = true;
