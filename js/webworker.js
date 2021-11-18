@@ -288,7 +288,7 @@ function initPrevDhBd(channel, myuid) {
 	gMyDhKey[channel].prevBdMsgCrypt = null;
 }
 
-const BDDEBUG = false;
+const BDDEBUG = true;
 function processBd(channel, uid, msgtype, timestamp, message) {
 	const myuid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel])));
 	const msgDate = parseInt(Date.now() / 1000) * 1000; //rounded to full seconds
@@ -304,7 +304,7 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 		if(BDDEBUG)
 			console.log("Got " + uid + " public+bd key, len " + message.length);
 
-		if (message.length == DH_BITS/8 && (msgtype & MSGISPRESENCE) && 0 == (msgtype & MSGISBDONE) && 0 == (msgtype & MSGISBDACK)) {
+		if ((msgtype & MSGISPRESENCE) && 0 == (msgtype & MSGISBDONE) && 0 == (msgtype & MSGISBDACK)) {
 			if (0 == (msgtype & MSGISPRESENCEACK)) {
 				msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
 				if(BDDEBUG)
