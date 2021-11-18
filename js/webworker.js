@@ -304,17 +304,15 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 		if(BDDEBUG)
 			console.log("Got " + uid + " public+bd key, len " + message.length);
 
-		if (0 == (msgtype & MSGISBDONE) && 0 == (msgtype & MSGISBDACK)) {
+		if (message.length == DH_BITS/8 && 0 == (msgtype & MSGISBDONE) && 0 == (msgtype & MSGISBDACK)) {
 			if ((msgtype & MSGISPRESENCE) && 0 == (msgtype & MSGISPRESENCEACK)) {
 				msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
 				if(BDDEBUG)
 					console.log("Request presence ack for " + myuid + "@" + channel);
 			}
-			if(message.length == DH_BITS/8) { 
-				if(BDDEBUG)
-					console.log("!!! bd invalidated in short message !!!");
-				initBd(channel, myuid);
-			}
+			if(BDDEBUG)
+				console.log("!!! bd invalidated in short message !!!");
+			initBd(channel, myuid);
 		}
 
 		let pub = buf2bn(StringToUint8(message.substring(0, DH_BITS/8)));
