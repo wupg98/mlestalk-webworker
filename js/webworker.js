@@ -288,7 +288,7 @@ function initPrevDhBd(channel, myuid) {
 	gMyDhKey[channel].prevBdMsgCrypt = null;
 }
 
-const BDDEBUG = true;
+const BDDEBUG = false;
 function processBd(channel, uid, msgtype, timestamp, message) {
 	const myuid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel])));
 	const msgDate = parseInt(Date.now() / 1000) * 1000; //rounded to full seconds
