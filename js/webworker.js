@@ -307,6 +307,8 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 		if (message.length == DH_BITS/8 && (msgtype & MSGISPRESENCE) && 0 == (msgtype & MSGISBDONE) && 0 == (msgtype & MSGISBDACK)) {
 			if (0 == (msgtype & MSGISPRESENCEACK)) {
 				msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
+				if(BDDEBUG)
+					console.log("Request presence ack for " + myuid + "@" + channel);
 			}
 			if(BDDEBUG)
 				console.log("!!! bd invalidated in short message !!!");
@@ -393,6 +395,8 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 					gDhDb[channel][uid] = pub;
 					if ((msgtype & MSGISPRESENCE) && 0 == (msgtype & MSGISPRESENCEACK)) {
 						msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
+						if(BDDEBUG)
+							console.log("Request presence ack for " + myuid + "@" + channel);
 					}
 					init = true;
 				}
