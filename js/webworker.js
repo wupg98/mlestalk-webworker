@@ -35,7 +35,6 @@ const DOMAIN_ENCKEY = StringToUint8("Mles-WebWorkerEncryptDom!v1");
 const DOMAIN_CHANKEY = StringToUint8("Mles-WebWorkerChannelDom!v1");
 const DOMAIN_AUTHKEY = StringToUint8("Mles-WebWorkerAuthDom!v1");
 const RECREATE_TIMER = 1000;
-const KEYTIMEOUT = 60*5*1000;
 
 const HDRLEN = 40;
 
@@ -291,11 +290,7 @@ function initPrevDhBd(channel, myuid) {
 const BDDEBUG = false;
 function processBd(channel, uid, msgtype, timestamp, message) {
 	const myuid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel])));
-	const msgDate = parseInt(Date.now() / 1000) * 1000; //rounded to full seconds
-	if (uid != myuid && timestamp < msgDate.valueOf() - KEYTIMEOUT) {
-		initDhBd(channel, myuid);
-	}
-	else if(uid == myuid) {  //received own message, init due to resyncing
+	if(uid == myuid) {  //received own message, init due to resyncing
 		initDhBd(channel, myuid);
 	}
 	else if (message.length == DH_BITS/8 || message.length == 2 * (DH_BITS/8)) {
