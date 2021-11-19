@@ -450,7 +450,7 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 					}
 				}
 				//if bd handling fails, ignore large handling
-				if (!init && (message.length == DH_BITS/8 && msgtype & MSGISBDACK) || message.length == 2 * (DH_BITS/8)) {
+				if (!init && (msgtype & MSGISBDACK)) {
 					if (gMyDhKey[channel].secretAcked) {
 						//do nothing, already acked
 					}
