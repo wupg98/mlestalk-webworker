@@ -288,7 +288,7 @@ function initPrevDhBd(channel, myuid) {
 	gMyDhKey[channel].prevBdMsgCrypt = null;
 }
 
-const BDDEBUG = false;
+const BDDEBUG = true;
 function processBd(channel, uid, msgtype, timestamp, message) {
 	const myuid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel])));
 	const msgDate = parseInt(Date.now() / 1000) * 1000; //rounded to full seconds
@@ -299,8 +299,6 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 		initDhBd(channel, myuid);
 	}
 	else if (message.length == DH_BITS/8 || message.length == 2 * (DH_BITS/8)) {
-		let init = false;
-
 		if(BDDEBUG)
 			console.log("Got " + uid + " public+bd key, len " + message.length);
 
@@ -333,9 +331,8 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 			if(BDDEBUG)
 				console.log("!!! skey invalidated in mismatching dh, init bd !!!");
 			gDhDb[channel][uid] = pub;
-			init = true;
 		}
-		else if(!init) {
+		else {
 			//calculate bd key
 			if(!gBdDb[channel])
 				gBdDb[channel] = {};
@@ -367,13 +364,14 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 				nextkey = keys[index + 1];
 			}
 			if (prevkey && nextkey) {
-				let bd = nextkey * modInv(prevkey, gMyDhKey[channel].prime) % gMyDhKey[channel].prime;
+				const bd = nextkey * modInv(prevkey, gMyDhKey[channel].prime) % gMyDhKey[channel].prime;
 				gMyDhKey[channel].bd = modPow(bd, gMyDhKey[channel].private, gMyDhKey[channel].prime);
 				gBdDb[channel][myuid] = gMyDhKey[channel].bd;
 			}
 
 			if (message.length == 2 * (DH_BITS/8) || (message.length == DH_BITS/8 && msgtype & MSGISBDONE)) {
 				let bd = BigInt(1);
+				let init = false;
 				let len = 0;
 				if (message.length == 2 * (DH_BITS/8))
 					len = 2 * DH_BITS/8;
@@ -386,7 +384,6 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 					initBd(channel, myuid);
 					if(BDDEBUG)
 						console.log("!!! skey invalidated in mismatching bd !!!");
-					gDhDb[channel][uid] = pub;
 					init = true;
 
 				}
@@ -394,7 +391,6 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 					initBd(channel, myuid);
 					if(BDDEBUG)
 						console.log("!!! skey invalidated in mismatching bd length!!! pubcnt " + pubcnt + " bd " + bd.toString(16));
-					gDhDb[channel][uid] = pub;
 					if ((msgtype & MSGISPRESENCE) && 0 == (msgtype & MSGISPRESENCEACK)) {
 						msgtype |= MSGPRESACKREQ; // inform upper layer about presence ack requirement
 						if(BDDEBUG)
@@ -478,7 +474,6 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 							initBd(channel, myuid);
 							if(BDDEBUG)
 								console.log("!!! bds invalidated in ack !!!");
-							gDhDb[channel][uid] = pub;
 						}
 					}
 				}
