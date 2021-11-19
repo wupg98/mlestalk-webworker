@@ -287,7 +287,7 @@ function initPrevDhBd(channel, myuid) {
 	gMyDhKey[channel].prevBdMsgCrypt = null;
 }
 
-const BDDEBUG = false;
+const BDDEBUG = true;
 function processBd(channel, uid, msgtype, timestamp, message) {
 	const myuid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel])));
 	if(uid == myuid) {  //received own message, init due to resyncing
@@ -304,7 +304,7 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 					console.log("Request presence ack for " + myuid + "@" + channel);
 			}
 
-			if(gBdDb[channel][uid]) {
+			if(gBdDb[channel] && gBdDb[channel][uid]) {
 				if(BDDEBUG)
 					console.log("!!! dhbd invalidated in short message !!!");
 				initDhBd(channel, myuid);
