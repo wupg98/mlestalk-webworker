@@ -304,16 +304,9 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 					console.log("Request presence ack for " + myuid + "@" + channel);
 			}
 
-			if(gBdDb[channel] && gBdDb[channel][uid]) {
-				if(BDDEBUG)
-					console.log("!!! dhbd invalidated in short message !!!");
-				initDhBd(channel, myuid);
-			}
-			else {
-				if(BDDEBUG)
-					console.log("!!! bd invalidated in short message !!!");
-				initBd(channel, myuid);
-			}
+			if(BDDEBUG)
+				console.log("!!! bd invalidated in short message !!!");
+			initBd(channel, myuid);
 
 		}
 
