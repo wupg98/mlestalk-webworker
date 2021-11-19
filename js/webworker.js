@@ -288,7 +288,7 @@ function initPrevDhBd(channel, myuid) {
 	gMyDhKey[channel].prevBdMsgCrypt = null;
 }
 
-const BDDEBUG = false;
+const BDDEBUG = true;
 function processBd(channel, uid, msgtype, timestamp, message) {
 	const myuid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel])));
 	const msgDate = parseInt(Date.now() / 1000) * 1000; //rounded to full seconds
@@ -310,9 +310,18 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 				if(BDDEBUG)
 					console.log("Request presence ack for " + myuid + "@" + channel);
 			}
-			if(BDDEBUG)
-				console.log("!!! bd invalidated in short message !!!");
-			initBd(channel, myuid);
+
+			if(gBdDb[channel][uid]) {
+				if(BDDEBUG)
+					console.log("!!! dhbd invalidated in short message !!!");
+				initDhBd(channel, myuid);
+			}
+			else {
+				if(BDDEBUG)
+					console.log("!!! bd invalidated in short message !!!");
+				initBd(channel, myuid);
+			}
+
 		}
 
 		let pub = buf2bn(StringToUint8(message.substring(0, DH_BITS/8)));
@@ -320,16 +329,9 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 			gDhDb[channel][uid] = pub;
 		}
 		else if (gDhDb[channel][uid] != pub) {
-			initDhBd(channel, myuid);
+			initBd(channel, myuid);
 			if(BDDEBUG)
-				console.log("!!! skey invalidated in mismatching dh!!!");
-			gDhDb[channel][uid] = pub;
-			init = true;
-		}
-		else if (message.length == DH_BITS/8 && !(msgtype & MSGISBDONE) && gDhDb[channel][uid] && gBdDb[channel][uid]) {
-			initDhBd(channel, myuid);
-			if(BDDEBUG)
-				console.log("!!! skey invalidated in short message as with existing bd!!!");
+				console.log("!!! skey invalidated in mismatching dh, init bd !!!");
 			gDhDb[channel][uid] = pub;
 			init = true;
 		}
@@ -389,7 +391,7 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 
 				}
 				else if (pubcnt > 2 && bd == BigInt(1) || pubcnt == 2 && bd != BigInt(1)) {
-					initDhBd(channel, myuid);
+					initBd(channel, myuid);
 					if(BDDEBUG)
 						console.log("!!! skey invalidated in mismatching bd length!!! pubcnt " + pubcnt + " bd " + bd.toString(16));
 					gDhDb[channel][uid] = pub;
@@ -473,7 +475,7 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 						}
 						else {
 							//start again
-							initDhBd(channel, myuid);
+							initBd(channel, myuid);
 							if(BDDEBUG)
 								console.log("!!! bds invalidated in ack !!!");
 							gDhDb[channel][uid] = pub;
