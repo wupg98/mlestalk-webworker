@@ -73,18 +73,6 @@ const MSGISLAST =      (0x1 << 5);
  */
  webWorker.postMessage[("send", data, uid, channel, randarr, msgtype, valueOfDate)]
  ```
-### Send message receive
-```
-/**
- * Mles WebSocket send receive after send
- *
- * @param  send {String}              OUT: command parameter of receive "send"
- * @param  uid {String}               OUT: Original Mles User Id
- * @param  channel {String}           OUT: Original Mles Channel
- * @param  isMultipart {boo           OUT: true, if send was multipart
- */
- webWorker.onmessage = e.data["send", uid, channel, isMultipart]
-``` 
 ### Data message receive
 ```
 /**
