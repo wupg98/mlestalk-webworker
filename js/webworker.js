@@ -621,7 +621,7 @@ function processOnClose(channel) {
 function processOnOpen(channel, reopen) {
 	let uid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel])));
 	if(false == reopen) {
-		postMessage(["init", uid, channel, gMyChannel[channel]]);
+		postMessage(["init", uid, channel]);
 	}
 	else {
 		postMessage(["resync", uid, channel]);

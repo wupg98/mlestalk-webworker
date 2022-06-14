@@ -35,9 +35,8 @@ Please see https://mles.io for details about Mles protocol.
  * @param  init {String}              OUT: command parameter of receive "init"
  * @param  uid {String}               OUT: Original Mles User Id
  * @param  channel {String}           OUT: Original Mles Channel
- * @param  mychannel {String}         OUT: Encrypted Mles Channel for reference
  */
- webWorker.onmessage = e.data["init", uid, channel, mychannel]
+ webWorker.onmessage = e.data["init", uid, channel]
 ```
 ### Reconnect message
 ```
@@ -72,7 +71,7 @@ const MSGISLAST =      (0x1 << 5);
  * @param  msgtype                    IN: message type flags in a single variable
  * @param  valueOfDate {Date}         IN: send time as Date
  */
- webWorker.postMessage[("send", data, uid, channel,  isEncryptedChannel, randarr, msgtype, valueOfDate)]
+ webWorker.postMessage[("send", data, uid, channel, randarr, msgtype, valueOfDate)]
  ```
 ### Send message receive
 ```
