@@ -19,7 +19,7 @@ let gChanCrypt = {};
 let gMsgCrypt = {};
 const SCATTERSIZE = 15;
 const ISFULL = 0x8000
-const ISIMAGE = 0x4000;
+const ISDATA = 0x4000;
 const ISPRESENCE = 0x2000;
 const ISPRESENCEACK = 0x1000;
 const ISMULTI = 0x800;
@@ -41,7 +41,7 @@ const HDRLEN = 40;
 /* Msg type flags */
 const MSGISFULL =         0x1;
 const MSGISPRESENCE =    (0x1 << 1);
-const MSGISIMAGE =       (0x1 << 2);
+const MSGISDATA =        (0x1 << 2);
 const MSGISMULTIPART =   (0x1 << 3);
 const MSGISFIRST =       (0x1 << 4);
 const MSGISLAST =        (0x1 << 5);
@@ -567,8 +567,8 @@ function processOnMessageData(channel, msg) {
 	let msgtype = 0;
 	if (flagU16 & ISFULL)
 		msgtype |= MSGISFULL;
-	if (flagU16 & ISIMAGE)
-		msgtype |= MSGISIMAGE;
+	if (flagU16 & ISDATA)
+		msgtype |= MSGISDATA;
 	if (flagU16 & ISPRESENCE)
 		msgtype |= MSGISPRESENCE;
 	if (flagU16 & ISPRESENCEACK)
@@ -1015,8 +1015,8 @@ onmessage = function (e) {
 				if (msgtype & MSGISFULL)
 					flagstamp |= ISFULL;
 
-				if (msgtype & MSGISIMAGE)
-					flagstamp |= ISIMAGE;
+				if (msgtype & MSGISDATA)
+					flagstamp |= ISDATA;
 
 				if (msgtype & MSGISPRESENCE)
 					flagstamp |= ISPRESENCE;
