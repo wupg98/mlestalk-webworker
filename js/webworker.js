@@ -827,14 +827,16 @@ function buf2bn(buf) {
 
 const MAXRND = 0x3ff;
 /* Padmé: https://lbarman.ch/blog/padme/ */
-function padme(msgsize) {
-	//const L = msgsize + (rnd & ~msgsize & MAXRND); //with random
-	const L = msgsize;
-	const E = Math.floor(Math.log2(L));
-	const S = Math.floor(Math.log2(E))+1;
-	const lastBits = E-S;
-	const bitMask = 2 ** lastBits - 1;
-	return (L + bitMask) & ~bitMask;
+/* Returns the final message size */
+function padme(n) {
+	if (n === 0) return 1;
+	n--
+	n |= n >> 1
+	n |= n >> 2
+	n |= n >> 4
+	n |= n >> 8
+	n |= n >> 16
+	return n+1
 }
 
 function createPrevBd(channel, prevBdKey, channelKey) {
@@ -1121,7 +1123,7 @@ onmessage = function (e) {
 				const msglen = msgsz + keysz;
 				//padmé padding
 				const padsz = padme(msglen + padlen) - msglen;
-				//console.log("TX: Msgsize " + msgsz + " padding sz " + padsz + " keysz " + keysz)
+				//console.log("TX: Msgsize " + msgsz + " padding sz " + padsz + " keysz " + keysz);
 				if(padsz > 0) {
 					newmessage += Uint8ToString(randBytesSync(padsz));
 				}
