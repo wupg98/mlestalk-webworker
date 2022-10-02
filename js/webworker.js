@@ -7,7 +7,7 @@
  */
 
 
-importScripts('cbor.js', 'blake2s.js', 'blowfish.js', 'scrypt-async.js', 'bigint-mod-arith.js');
+importScripts('cbor.js', 'blake2s.js', 'blowfish.js', 'scrypt-async.js', 'bigint-mod-arith.js', 'lz-string.js');
 
 let gWebSocket = {};
 let gMyAddr = {};
@@ -538,31 +538,32 @@ function processOnMessageData(channel, msg) {
 	if (decrypted.length < HDRLEN) {
 		return;
 	}
+	let decompressed = LZString.decompress(decrypted);
 
-	let versizestr = decrypted.slice(0, 8);
+	let versizestr = decompressed.slice(0, 8);
 	let varray = crypt.split64by32(versizestr);
 	const msgsz = unscatterU16(varray[0], varray[1]);
 
-	let keysizestr = decrypted.slice(8, 16);
+	let keysizestr = decompressed.slice(8, 16);
 	let karray = crypt.split64by32(keysizestr);
 	let keysz = unscatterU16(karray[0], karray[1]);
 
 	//let padsz = decrypted.length - msgsz - keysz;
 	//console.log("RX: Msgsize " + msgsz + " Keysz " + keysz + " Pad size " + padsz);
 
-	let timestring = decrypted.slice(16, 24);
+	let timestring = decompressed.slice(16, 24);
 	let rarray = crypt.split64by32(timestring);
 	let timeU16 = unscatterU16(rarray[0], rarray[1]);
-	let weekstring = decrypted.slice(24, 32);
+	let weekstring = decompressed.slice(24, 32);
 	let warray = crypt.split64by32(weekstring);
 	let weekU16 = unscatterU16(warray[0], warray[1]);
-	let flagstring = decrypted.slice(32, HDRLEN);
+	let flagstring = decompressed.slice(32, HDRLEN);
 	let farray = crypt.split64by32(flagstring);
 	let flagU16 = unscatterU16(farray[0], farray[1]);
 
 	let msgDate = readTimestamp(timeU16, weekU16, flagU16 & ALLISSET);
 
-	message = decrypted.slice(HDRLEN, msgsz);
+	message = decompressed.slice(HDRLEN, msgsz);
 
 	let msgtype = 0;
 	if (flagU16 & ISFULL)
@@ -1118,10 +1119,12 @@ onmessage = function (e) {
 				//message itself
 				newmessage += data;
 
-				const msglen = msgsz + keysz;
+				newmessage = LZString.compress(newmessage);
+
+				const msglen = newmessage.length;
 				//padmé padding
-				const padsz = padme(msglen + padlen) - msglen;
-				//console.log("TX: Msgsize " + msgsz + " padding sz " + padsz + " keysz " + keysz)
+				const padsz = padme(msglen) - msglen;
+				//console.log("TX: Total msgsize " + (msglen + padsz) + " Msglen " + msglen + " padding sz " + padsz + " keysz " + keysz)
 				if(padsz > 0) {
 					newmessage += Uint8ToString(randBytesSync(padsz));
 				}
