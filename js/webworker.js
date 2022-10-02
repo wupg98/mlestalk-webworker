@@ -1127,7 +1127,7 @@ onmessage = function (e) {
 
 				const msglen = newmessage.length;
 				//padmé padding
-				const padsz = padme(msglen) - msglen;
+				const padsz = padme(msglen + padlen) - msglen;
 				//console.log("TX: Total msgsize " + (msglen + padsz) + " Msglen " + msglen + " padding sz " + padsz + " keysz " + keysz)
 				if(padsz > 0) {
 					newmessage += Uint8ToString(randBytesSync(padsz));
