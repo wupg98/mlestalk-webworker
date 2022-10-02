@@ -538,7 +538,11 @@ function processOnMessageData(channel, msg) {
 	if (decrypted.length < HDRLEN) {
 		return;
 	}
+
 	let decompressed = LZString.decompress(decrypted);
+	if (null == decompressed) {
+		return;
+	}
 
 	let versizestr = decompressed.slice(0, 8);
 	let varray = crypt.split64by32(versizestr);
