@@ -307,7 +307,6 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 			if(BDDEBUG)
 				console.log("!!! bd invalidated in short message !!!");
 			initBd(channel, myuid);
-
 		}
 
 		let pub = buf2bn(StringToUint8(message.substring(0, DH_BITS/8)));
@@ -357,7 +356,7 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 				gBdDb[channel][myuid] = gMyDhKey[channel].bd;
 			}
 
-			if (message.length == 2 * (DH_BITS/8) || (message.length == DH_BITS/8 && msgtype & MSGISBDONE)) {
+			if (message.length == 2 * (DH_BITS/8) || (message.length == DH_BITS/8 && (msgtype & MSGISBDONE))) {
 				let bd = BigInt(1);
 				let init = false;
 				let len = 0;
@@ -450,8 +449,8 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 							//ack received from everyone else?
 							//console.log("Ackcnt " + ackcnt + " pubcnt " + pubcnt + " bdcnt " + bdcnt);
 							if (pubcnt == bdcnt && ackcnt == pubcnt &&
-								(message.length == DH_BITS/8 && msgtype & MSGISBDACK && msgtype & MSGISBDONE && pubcnt == 2 ||
-								 message.length == 2 * (DH_BITS/8) && msgtype & MSGISBDACK && pubcnt > 2)) {
+								(message.length == DH_BITS/8 && (msgtype & MSGISBDACK) && (msgtype & MSGISBDONE) && pubcnt == 2 ||
+								 message.length == 2 * (DH_BITS/8) && (msgtype & MSGISBDACK) && pubcnt > 2)) {
 
 								//console.log("Ack count matches to pub&bdcnt, enabling send encryption!");
 								gMyDhKey[channel].secretAcked = true;
@@ -552,8 +551,8 @@ function processOnMessageData(channel, msg) {
 	let karray = crypt.split64by32(keysizestr);
 	let keysz = unscatterU16(karray[0], karray[1]);
 
-	//let padsz = decrypted.length - msgsz - keysz;
-	//console.log("RX: Msgsize " + msgsz + " Keysz " + keysz + " Pad size " + padsz);
+	//let padsz = decompressed.length - msgsz - keysz;
+	//console.log("RX: Len " + decompressed.length + " Msgsize " + msgsz + " Keysz " + keysz + " Pad size " + padsz);
 
 	let timestring = decompressed.slice(16, 24);
 	let rarray = crypt.split64by32(timestring);
@@ -590,7 +589,7 @@ function processOnMessageData(channel, msg) {
 		msgtype |= MSGISBDACK;
 
 	if(keysz > 0) {
-		const keystr = decrypted.slice(msgsz, msgsz+keysz);
+		const keystr = decompressed.slice(msgsz, msgsz+keysz);
 		msgtype = processBd(channel, uid, msgtype, msgDate.valueOf(), keystr);
 	}
 
@@ -1128,7 +1127,7 @@ onmessage = function (e) {
 				const msglen = newmessage.length;
 				//padmé padding
 				const padsz = padme(msglen + padlen) - msglen;
-				//console.log("TX: Total msgsize " + (msglen + padsz) + " Msglen " + msglen + " padding sz " + padsz + " keysz " + keysz)
+				//console.log("TX: Total msgsize " + (msglen + padsz) + " Msglen " + msglen + " padlen " + padlen + " padding sz " + padsz + " keysz " + keysz)
 				if(padsz > 0) {
 					newmessage += Uint8ToString(randBytesSync(padsz));
 				}
