@@ -31,9 +31,9 @@ const ALLISSET = 0X7F;
 const BEGIN = new Date(Date.UTC(2018, 0, 1, 0, 0, 0));
 const HMAC_LEN = 12;
 const NONCE_LEN = 32;
-const DOMAIN_ENCKEY = StringToUint8("Mles-WebWorkerCompEncryptDom!v1");
-const DOMAIN_CHANKEY = StringToUint8("Mles-WebWorkerCompChannelDom!v1");
-const DOMAIN_AUTHKEY = StringToUint8("Mles-WebWorkerCompAuthDom!v1");
+const DOMAIN_ENCKEY = StringToUint8("Mles-WebWorkerEncryptDom!v1");
+const DOMAIN_CHANKEY = StringToUint8("Mles-WebWorkerChannelDom!v1");
+const DOMAIN_AUTHKEY = StringToUint8("Mles-WebWorkerAuthDom!v1");
 const RECREATE_TIMER = 1000;
 
 const HDRLEN = 40;
