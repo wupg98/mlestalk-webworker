@@ -623,6 +623,10 @@ function processOnClose(channel) {
 }
 
 function processOnOpen(channel, reopen) {
+	//send mlesv2 init
+        let join = '{"uid":"' + gMyUid[channel] + '","channel":"' + gMyChannel[channel] + '"}';
+	gWebSocket[channel].send(join);
+
 	let uid = gChanCrypt[channel].trimZeros(gChanCrypt[channel].decrypt(atob(gMyUid[channel])));
 	if(false == reopen) {
 		postMessage(["init", uid, channel]);
@@ -1153,8 +1157,8 @@ onmessage = function (e) {
 				newarr.set(arr, noncearr.byteLength);
 				newarr.set(hmac, noncearr.byteLength + arr.byteLength);
 				let obj = {
-					uid: btoa(gChanCrypt[channel].encrypt(uid)),
-					channel: btoa(gChanCrypt[channel].encrypt(channel)),
+					uid: gMyUid[channel],
+					channel: gMyChannel[channel],
 					message: newarr
 				};
 				let encodedMsg = msgEncode(obj);
