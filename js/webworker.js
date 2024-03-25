@@ -385,7 +385,7 @@ function processBd(channel, uid, msgtype, timestamp, message) {
 					}
 					init = true;
 				}
-				else if (gBdDb[channel][uid] == bd) {
+				else if (gBdDb[channel][uid] == bd && && gMyDhKey[channel].secret) {
 					//BD matches, do nothing
 				}
 				else {
